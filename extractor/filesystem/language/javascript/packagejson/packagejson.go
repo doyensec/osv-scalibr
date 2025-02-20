@@ -207,7 +207,9 @@ func parse(path string, r io.Reader) ([]*extractor.Inventory, error) {
 
 		// Skip dependencies that do not follow the semver format
 		// (e.g., git://, file://, etc.).
-		// TODO: test this bit
+		// TODO:
+		// - test this bit
+		// - versions starting with ~ and ^ are not parsed
 		if _, err := semver.NPM.Parse(version); err != nil {
 			continue
 		}

@@ -21,9 +21,12 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"path/filepath"
+	"slices"
 	"strings"
 
+	"deps.dev/util/semver"
 	"github.com/google/osv-scalibr/extractor"
 	"github.com/google/osv-scalibr/extractor/filesystem"
 	"github.com/google/osv-scalibr/extractor/filesystem/internal/units"
@@ -54,7 +57,8 @@ type packageJSON struct {
 	Contributes *struct {
 	} `json:"contributes"`
 	// Not an NPM field but present for Unity package files.
-	Unity string `json:"unity"`
+	Unity        string            `json:"unity"`
+	Dependencies map[string]string `json:"dependencies"`
 }
 
 // Config is the configuration for the Extractor.
@@ -137,20 +141,16 @@ func (e Extractor) reportFileRequired(path string, fileSizeBytes int64, result s
 
 // Extract extracts packages from package.json files passed through the scan input.
 func (e Extractor) Extract(ctx context.Context, input *filesystem.ScanInput) ([]*extractor.Inventory, error) {
-	i, err := parse(input.Path, input.Reader)
+	ivs, err := parse(input.Path, input.Reader)
 	if err != nil {
 		e.reportFileExtracted(input.Path, input.Info, err)
 		return nil, fmt.Errorf("packagejson.parse(%s): %w", input.Path, err)
 	}
 
-	inventory := []*extractor.Inventory{}
-	if i != nil {
-		inventory = append(inventory, i)
-		i.Locations = []string{input.Path}
-	}
+	ivs = decouple(ivs)
 
 	e.reportFileExtracted(input.Path, input.Info, nil)
-	return inventory, nil
+	return ivs, nil
 }
 
 func (e Extractor) reportFileExtracted(path string, fileinfo fs.FileInfo, err error) {
@@ -168,7 +168,7 @@ func (e Extractor) reportFileExtracted(path string, fileinfo fs.FileInfo, err er
 	})
 }
 
-func parse(path string, r io.Reader) (*extractor.Inventory, error) {
+func parse(path string, r io.Reader) ([]*extractor.Inventory, error) {
 	dec := json.NewDecoder(r)
 
 	var p packageJSON
@@ -176,11 +176,6 @@ func parse(path string, r io.Reader) (*extractor.Inventory, error) {
 		log.Debugf("package.json file %s json decode failed: %v", path, err)
 		// TODO(b/281023532): We should not mark the overall SCALIBR scan as failed if we can't parse a file.
 		return nil, fmt.Errorf("failed to parse package.json file: %w", err)
-	}
-
-	if !p.hasNameAndVersionValues() {
-		log.Debugf("package.json file %s does not have a version and/or name", path)
-		return nil, nil
 	}
 	if p.isVSCodeExtension() {
 		log.Debugf("package.json file %s is a Visual Studio Code Extension Manifest, not an NPM package", path)
@@ -191,19 +186,69 @@ func parse(path string, r io.Reader) (*extractor.Inventory, error) {
 		return nil, nil
 	}
 
-	return &extractor.Inventory{
-		Name:    p.Name,
-		Version: p.Version,
-		Metadata: &JavascriptPackageJSONMetadata{
-			Author:       p.Author,
-			Maintainers:  removeEmptyPersons(p.Maintainers),
-			Contributors: removeEmptyPersons(p.Contributors),
-		},
-	}, nil
+	ivs := []*extractor.Inventory{}
+
+	if p.hasNameAndVersionValues() {
+		ivs = append(ivs, &extractor.Inventory{
+			Name:    p.Name,
+			Version: p.Version,
+			Metadata: &JavascriptPackageJSONMetadata{
+				Author:       p.Author,
+				Maintainers:  removeEmptyPersons(p.Maintainers),
+				Contributors: removeEmptyPersons(p.Contributors),
+			},
+			Locations: []string{path},
+		})
+	}
+
+	for name, version := range p.Dependencies {
+
+		name, version = removeAlias(name, version)
+
+		// Skip dependencies that do not follow the semver format
+		// (e.g., git://, file://, etc.).
+		// TODO: test this bit
+		if _, err := semver.NPM.Parse(version); err != nil {
+			continue
+		}
+		ivs = append(ivs, &extractor.Inventory{
+			Name:      name,
+			Version:   version,
+			Locations: []string{path},
+		})
+	}
+
+	return ivs, nil
+}
+
+// removeAlias removes alias in dependencies
+func removeAlias(name, version string) (string, string) {
+	suffix, ok := strings.CutPrefix(version, "npm:")
+	if !ok {
+		return name, version
+	}
+	parts := strings.SplitN(suffix, "@", 2)
+
+	// return a non valid version
+	if len(parts) != 2 {
+		return name, ""
+	}
+	return parts[0], parts[1]
 }
 
 func (p packageJSON) hasNameAndVersionValues() bool {
 	return p.Name != "" && p.Version != ""
+}
+
+func decouple(ivs []*extractor.Inventory) []*extractor.Inventory {
+	type key struct{ name, version string }
+
+	set := map[key]*extractor.Inventory{}
+	for _, iv := range ivs {
+		set[key{iv.Name, iv.Version}] = iv
+	}
+
+	return slices.Collect(maps.Values(set))
 }
 
 // isVSCodeExtension returns true if p is a VSCode Extension Manifest.

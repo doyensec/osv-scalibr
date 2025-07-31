@@ -48,12 +48,19 @@ const maxConcurrentRequests = 1000
 var _ enricher.Enricher = &Enricher{}
 
 type Enricher struct {
-	client *datasource.CachedInsightsClient
+	client Client
 }
 
 // New creates a new Enricher
 func New() enricher.Enricher {
 	return &Enricher{}
+}
+
+// NewWithClient creates a new Enricher with the specified client
+func NewWithClient(client Client) enricher.Enricher {
+	return &Enricher{
+		client: client,
+	}
 }
 
 // Name of the Enricher.

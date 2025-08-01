@@ -126,7 +126,7 @@ func (e *Enricher) Enrich(ctx context.Context, _ *enricher.ScanInput, inv *inven
 	}
 
 	orderedAdvisoryKeys := slices.Collect(maps.Keys(advToPkgs))
-	advisoryQueries := make([]*depsdevpb.GetAdvisoryRequest, len(inv.Packages))
+	advisoryQueries := make([]*depsdevpb.GetAdvisoryRequest, len(orderedAdvisoryKeys))
 	for i, key := range orderedAdvisoryKeys {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -155,12 +155,18 @@ func (e *Enricher) Enrich(ctx context.Context, _ *enricher.ScanInput, inv *inven
 			}
 		}
 
-		signals := []*vex.FindingExploitabilitySignal{}
+		var signals []*vex.FindingExploitabilitySignal
 		vuln := osvschema.Vulnerability{
 			ID:       advKey,
 			Summary:  adv.GetTitle(),
 			Aliases:  adv.GetAliases(),
 			Severity: []osvschema.Severity{severity},
+			References: []osvschema.Reference{
+				{
+					Type: osvschema.ReferenceAdvisory,
+					URL:  adv.GetUrl(),
+				},
+			},
 		}
 		for _, pkg := range pkgs {
 			// TODO: add a test on FindingVEXFromPackageVEX returning nil
@@ -168,6 +174,7 @@ func (e *Enricher) Enrich(ctx context.Context, _ *enricher.ScanInput, inv *inven
 			vuln.Affected = append(vuln.Affected, inventory.PackageToAffected(pkg, "UNKNOWN", &severity)...)
 		}
 
+		// TODO: dedup inv.PackageVulns
 		inv.PackageVulns = append(inv.PackageVulns, &inventory.PackageVuln{
 			Vulnerability:         vuln,
 			Packages:              pkgs,

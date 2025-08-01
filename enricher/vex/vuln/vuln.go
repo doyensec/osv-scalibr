@@ -99,8 +99,8 @@ func (e *Enricher) Enrich(ctx context.Context, _ *enricher.ScanInput, inv *inven
 		e.client = depsDevAPIClient
 	}
 
-	versionQueries := make([]*depsdevpb.GetVersionRequest, 0, len(inv.Packages))
-	for _, pkg := range inv.Packages {
+	versionQueries := make([]*depsdevpb.GetVersionRequest, len(inv.Packages))
+	for i, pkg := range inv.Packages {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -109,7 +109,7 @@ func (e *Enricher) Enrich(ctx context.Context, _ *enricher.ScanInput, inv *inven
 		if !ok {
 			continue
 		}
-		versionQueries = append(versionQueries, versionQuery(ecoSystem, pkg.Name, pkg.Version))
+		versionQueries[i] = versionQuery(ecoSystem, pkg.Name, pkg.Version)
 	}
 
 	advisoryKeys, err := e.makeAdvisoryKeysRequest(ctx, versionQueries)
@@ -120,20 +120,18 @@ func (e *Enricher) Enrich(ctx context.Context, _ *enricher.ScanInput, inv *inven
 	advToPkgs := map[string][]*extractor.Package{}
 	for i, keys := range advisoryKeys {
 		for _, key := range keys {
-			// TODO: recheck this
+			// TODO: check what happens when advToPkgs[key] doesn't yet exists
 			advToPkgs[key] = append(advToPkgs[key], inv.Packages[i])
 		}
 	}
 
 	orderedAdvisoryKeys := slices.Collect(maps.Keys(advToPkgs))
-	advisoryQueries := make([]*depsdevpb.GetAdvisoryRequest, 0, len(inv.Packages))
-	for _, key := range orderedAdvisoryKeys {
+	advisoryQueries := make([]*depsdevpb.GetAdvisoryRequest, len(inv.Packages))
+	for i, key := range orderedAdvisoryKeys {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		advisoryQueries = append(advisoryQueries, &depsdevpb.GetAdvisoryRequest{
-			AdvisoryKey: &depsdevpb.AdvisoryKey{Id: key},
-		})
+		advisoryQueries[i] = &depsdevpb.GetAdvisoryRequest{AdvisoryKey: &depsdevpb.AdvisoryKey{Id: key}}
 	}
 
 	advisories, err := e.makeAdvisoryRequest(ctx, advisoryQueries)
@@ -148,10 +146,8 @@ func (e *Enricher) Enrich(ctx context.Context, _ *enricher.ScanInput, inv *inven
 
 		pkgs := advToPkgs[advKey]
 		adv := advisories[i]
-		signals := []*vex.FindingExploitabilitySignal{}
 
 		var severity osvschema.Severity
-
 		if adv.GetCvss3Vector() != "" {
 			severity = osvschema.Severity{
 				Type:  "CVSS_V3",
@@ -159,16 +155,17 @@ func (e *Enricher) Enrich(ctx context.Context, _ *enricher.ScanInput, inv *inven
 			}
 		}
 
+		signals := []*vex.FindingExploitabilitySignal{}
 		vuln := osvschema.Vulnerability{
 			ID:       advKey,
 			Summary:  adv.GetTitle(),
 			Aliases:  adv.GetAliases(),
 			Severity: []osvschema.Severity{severity},
 		}
-
 		for _, pkg := range pkgs {
-			vuln.Affected = append(vuln.Affected, inventory.PackageToAffected(pkg, "UNKNOWN", &severity)...)
+			// TODO: add a test on FindingVEXFromPackageVEX returning nil
 			signals = append(signals, vex.FindingVEXFromPackageVEX(vuln.ID, pkg.ExploitabilitySignals)...)
+			vuln.Affected = append(vuln.Affected, inventory.PackageToAffected(pkg, "UNKNOWN", &severity)...)
 		}
 
 		inv.PackageVulns = append(inv.PackageVulns, &inventory.PackageVuln{
@@ -189,15 +186,12 @@ func (e *Enricher) makeAdvisoryKeysRequest(ctx context.Context, queries []*depsd
 
 	for i := range queries {
 		if queries[i] == nil {
-			// This may be a private package.
-			advisories[i] = []string{}
 			continue
 		}
 		g.Go(func() error {
 			resp, err := e.client.GetVersion(ctx, queries[i])
 			if err != nil {
 				if status.Code(err) == codes.NotFound {
-					advisories[i] = []string{}
 					return nil
 				}
 				return err
@@ -208,7 +202,6 @@ func (e *Enricher) makeAdvisoryKeysRequest(ctx context.Context, queries []*depsd
 				advs = append(advs, adv.GetId())
 			}
 			advisories[i] = advs
-
 			return nil
 		})
 	}
@@ -225,20 +218,10 @@ func (e *Enricher) makeAdvisoryRequest(ctx context.Context, queries []*depsdevpb
 	g.SetLimit(maxConcurrentRequests)
 
 	for i := range queries {
-		if queries[i] == nil {
-			// This may be a private package.
-			continue
-		}
 		g.Go(func() error {
-			resp, err := e.client.GetAdvisory(ctx, queries[i])
-			if err != nil {
-				if status.Code(err) == codes.NotFound {
-					return nil
-				}
-				return err
-			}
-			advisories[i] = resp
-			return nil
+			var err error
+			advisories[i], err = e.client.GetAdvisory(ctx, queries[i])
+			return err
 		})
 	}
 	if err := g.Wait(); err != nil {

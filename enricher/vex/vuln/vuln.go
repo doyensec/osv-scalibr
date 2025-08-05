@@ -153,6 +153,11 @@ func (e *Enricher) Enrich(ctx context.Context, _ *enricher.ScanInput, inv *inven
 				Type:  "CVSS_V3",
 				Score: adv.GetCvss3Vector(),
 			}
+		} else {
+			severity = osvschema.Severity{
+				Type:  "Score",
+				Score: fmt.Sprint(adv.GetCvss3Score()),
+			}
 		}
 
 		var signals []*vex.FindingExploitabilitySignal

@@ -154,17 +154,22 @@ func TestEnrich(t *testing.T) {
 				t.Fatalf("Enrich(%v) error: %v, want %v", tt.packages, err, tt.wantErr)
 			}
 
-			sortPkgVulns := cmpopts.SortSlices(func(a, b *inventory.PackageVuln) bool {
-				return a.Vulnerability.ID < b.Vulnerability.ID
-			})
-
 			want := &inventory.Inventory{
 				PackageVulns: tt.wantPackageVulns,
 				Packages:     tt.packages,
 			}
 
-			// TODO: since []osvschema.Affected{} is ignored, maybe add some test in there
-			if diff := cmp.Diff(want, inv, sortPkgVulns, cmpopts.IgnoreTypes([]osvschema.Affected{})); diff != "" {
+			sortPkgVulns := cmpopts.SortSlices(func(a, b *inventory.PackageVuln) bool {
+				return a.Vulnerability.ID < b.Vulnerability.ID
+			})
+
+			diff := cmp.Diff(
+				want, inv,
+				sortPkgVulns,
+				// cmpopts.IgnoreTypes([]osvschema.Affected{}),
+			)
+
+			if diff != "" {
 				t.Errorf("Enrich(%v): unexpected diff (-want +got): %v", tt.packages, diff)
 			}
 		})

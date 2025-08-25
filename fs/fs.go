@@ -106,45 +106,40 @@ func NewReaderAt(ioReader io.Reader) (io.ReaderAt, error) {
 // GetRealPath returns the real absolute path of the file on the scanning host's filesystem.
 // If the file is on a virtual filesystem (e.g. a remote container), it is first copied into a
 // temporary directory on the scanning host's filesystem. It's up to the caller to delete the
-// directory once they're done using it.
-//
-// Sample code to delete the directory:
-// ```
-// realPath := GetRealPath(...)
-// dir := filepath.Dir(realPath)
-//
-//	if err := os.RemoveAll(dir); err != nil {
-//	    log.Errorf("os.RemoveAll(%q): %w", dir, err)
-//	}
-func GetRealPath(root *ScanRoot, path string, reader io.Reader) (string, error) {
+// directory once they're done using it, using the returned function.
+func GetRealPath(root *ScanRoot, path string, reader io.Reader) (string, func() error, error) {
+	nopCleanup := func() error { return nil }
+
 	if !root.IsVirtual() {
-		return filepath.Join(root.Path, path), nil
+		return filepath.Join(root.Path, path), nopCleanup, nil
 	}
 
 	// This is a virtual filesystem.
 	// Move the file to the scanning hosts's filesystem.
 	dir, err := os.MkdirTemp("", "scalibr-tmp")
 	if err != nil {
-		return "", err
+		return "", nopCleanup, err
 	}
+
+	cleanupDir := func() error { return os.RemoveAll(dir) }
 	realPath := filepath.Join(dir, "file")
 	f, err := os.Create(realPath)
 	if err != nil {
-		return "", err
+		return "", cleanupDir, err
 	}
 	defer f.Close()
 
 	if reader == nil {
 		reader, err = root.FS.Open(path)
 		if err != nil {
-			return "", err
+			return "", cleanupDir, err
 		}
 	}
 
 	_, err = io.Copy(f, reader)
 	if err != nil {
-		return "", err
+		return "", cleanupDir, err
 	}
 
-	return realPath, nil
+	return realPath, cleanupDir, nil
 }

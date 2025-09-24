@@ -3,11 +3,7 @@
 
 name: Go
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+on: push
 
 jobs:
   linelint:
@@ -32,8 +28,8 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-        # gofmt and goimports expect that files on Window use \r\n
-        # so we need git to not automatically translate between \n
+      # gofmt and goimports expect that files on Window use \r\n
+      # so we need git to not automatically translate between \n
       - run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
 

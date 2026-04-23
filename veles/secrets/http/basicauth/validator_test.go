@@ -34,17 +34,14 @@ func setupMockServer(t *testing.T, expectedMethod, expectedPath, username, passw
 	t.Helper() // Marks this as a test helper function so failure logs point to the actual test case line
 
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// 1. Verify the method (ensures downgrading works)
 		if r.Method != expectedMethod {
 			t.Errorf("Expected method %s, got %s", expectedMethod, r.Method)
 		}
 
-		// 2. Verify the path
 		if r.URL.Path != expectedPath {
 			t.Errorf("Expected path %s, got %s", expectedPath, r.URL.Path)
 		}
 
-		// 3. Differential response based on the presence of the Authorization header
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
 			w.WriteHeader(unauthStatus)

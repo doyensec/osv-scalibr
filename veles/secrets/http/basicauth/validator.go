@@ -47,12 +47,11 @@ func NewValidator() *Validator {
 
 // Validate checks if the provided secret is active using differential HTTP requests.
 func (v *Validator) Validate(ctx context.Context, creds Credentials) (veles.ValidationStatus, error) {
+	// Without a target URL, we cannot attempt validation.
 	if creds.TargetURL == "" {
-		// Without a target URL, we cannot attempt validation.
 		return veles.ValidationFailed, nil
 	}
 
-	// 1. Normalize the Target URL & Method
 	target := creds.TargetURL
 	if !strings.HasPrefix(target, "http://") && !strings.HasPrefix(target, "https://") {
 		target = "https://" + target
@@ -62,11 +61,11 @@ func (v *Validator) Validate(ctx context.Context, creds Credentials) (veles.Vali
 		target = strings.TrimRight(target, "/") + creds.Path
 	}
 
+	// Use the provided method only when is not disruptive
 	method := strings.ToUpper(creds.Method)
 	switch method {
 	case http.MethodGet, http.MethodHead, http.MethodOptions:
 	default:
-		// Downgrade any destructive or unknown method to GET.
 		method = http.MethodGet
 	}
 
@@ -96,12 +95,18 @@ func (v *Validator) Validate(ctx context.Context, creds Credentials) (veles.Vali
 	authStatus := authResp.StatusCode
 	authResp.Body.Close()
 
-	// The status changed! This is our strong signal.
-	if authStatus >= 200 && authStatus < 400 {
+	// The status changed into a valid status, the secret is valid
+	if authStatus >= 200 && authStatus <= 400 {
 		return veles.ValidationValid, nil
 	}
 
-	// e.g., 401 -> 403. Authentication succeeded, but Authorization failed.
+	// The status changed into 404, which means there might be something wrong with the
+	// request format but the secret is no longer the problem
+	if authStatus == http.StatusBadRequest {
+		return veles.ValidationValid, nil
+	}
+
+	// If the status changed from 401 to 403. It means that the Authentication succeeded, but Authorization failed.
 	if authStatus == http.StatusForbidden && unauthStatus == http.StatusUnauthorized {
 		return veles.ValidationValid, nil
 	}

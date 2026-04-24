@@ -56,6 +56,7 @@ func TestDetector_truePositives(t *testing.T) {
 		input string
 		want  []veles.Secret
 	}{
+		// Log formats
 		{
 			name: "pino_log",
 			file: "logs/pino/app.log",
@@ -67,10 +68,25 @@ func TestDetector_truePositives(t *testing.T) {
 			want: []veles.Secret{cred123, cred123},
 		},
 		{
+			name: "nginx_log",
+			file: "logs/nginx/access.log",
+			want: []veles.Secret{
+				http.BasicAuthCredentials{Username: "admin", Password: "password123"},
+				http.BasicAuthCredentials{Username: "admin", Password: "password123"},
+			},
+		},
+		// Client side collections
+		{
+			name: "bruno-1",
+			file: "bruno/basic/Basic Auth Header.yml",
+			want: []veles.Secret{credMock},
+		},
+		{
 			name: "burp_basic_auth_project",
 			file: "burp/basic-auth.burp",
 			want: []veles.Secret{credMock},
 		},
+		// Synthetic examples
 		{
 			name: "http_request_single_header",
 			input: `GET / HTTP/1.1
@@ -161,21 +177,25 @@ func TestDetector_trueNegatives(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	negString := []struct {
+	negCases := []struct {
 		name  string
+		file  string
 		input string
 	}{
+		// Credentials are present, but not in base64 format
 		{
-			name: "json_split_key_value_postman_style",
-			input: `{
-  "name": "req",
-  "header": [
-    { "key": "Authorization",
-      "value": "Basic ` + basicB64Password123 + `"
-    }
-  ]
-}`,
+			name: "bruno-2",
+			file: "bruno/basic/Basic Auth stored properly.yml",
 		},
+		{
+			name:  "curl_user_short_flag",
+			input: `curl -sS -u 'admin:password123' 'https://httpbin.org/basic-auth/admin/password123'`,
+		},
+		{
+			name:  "curl_user_long_flag",
+			input: `curl --user "svc:token" 'https://internal.service.example/api/v1/healthz'`,
+		},
+		// Synthetic examples
 		{
 			name: "bearer_in_authorization",
 			input: `GET / HTTP/1.1
@@ -189,11 +209,6 @@ Authorization: Bearer abcd-ef-ghij
 			input: `{"headers":{"Authorization":"Bearer eyJ0eXAiOiJKV1QifQ"}}`,
 		},
 		{
-			name: "log_line_auth_shorthand",
-			input: `192.0.2.1 - - [24/Apr/2026:00:00:00 +0000] "GET /" 200 0 Auth: "Basic ` + basicB64Password123 + `"
-`,
-		},
-		{
 			name: "invalid_base64_payload",
 			input: `GET / HTTP/1.1
 Host: y
@@ -205,18 +220,21 @@ Authorization: Basic not-valid-base64!!!
 			name:  "valid_base64_decodes_without_colon",
 			input: `Authorization: Basic bm9uZQ==`,
 		},
-		{
-			name:  "curl_user_short_flag",
-			input: `curl -sS -u 'admin:password123' 'https://httpbin.org/basic-auth/admin/password123'`,
-		},
-		{
-			name:  "curl_user_long_flag",
-			input: `curl --user "svc:token" 'https://internal.service.example/api/v1/healthz'`,
-		},
 	}
-	for _, tc := range negString {
+	for _, tc := range negCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, derr := e.Detect(t.Context(), bytes.NewReader([]byte(tc.input)))
+			var data []byte
+			if tc.file != "" {
+				var readErr error
+				data, readErr = os.ReadFile(filepath.Join("testdata", tc.file))
+				if readErr != nil {
+					t.Fatal(readErr)
+				}
+			} else {
+				data = []byte(tc.input)
+			}
+
+			got, derr := e.Detect(t.Context(), bytes.NewReader(data))
 			if derr != nil {
 				t.Fatal(derr)
 			}

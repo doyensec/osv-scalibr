@@ -15,6 +15,7 @@
 // Package http contains http log/dump secrets detector
 package http
 
+// BasicAuthCredentials contain username and password retrieved from a Basic Authorization payload
 type BasicAuthCredentials struct {
 	Username string
 	Password string

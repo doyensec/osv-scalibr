@@ -17,6 +17,7 @@ package basicauth
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -47,22 +48,23 @@ func NewValidator() *Validator {
 
 // Validate checks if the provided secret is active using differential HTTP requests.
 func (v *Validator) Validate(ctx context.Context, creds Credentials) (veles.ValidationStatus, error) {
-	// Without a target URL, we cannot attempt validation.
-	if creds.TargetURL == "" {
-		return veles.ValidationFailed, nil
+	if creds.Metadata == nil {
+		return veles.ValidationFailed, errors.New("no metadata available, impossible to validate the secret")
 	}
 
-	target := creds.TargetURL
+	metadata := creds.Metadata
+
+	target := metadata.TargetURL
 	if !strings.HasPrefix(target, "http://") && !strings.HasPrefix(target, "https://") {
 		target = "https://" + target
 	}
 
-	if creds.Path != "" && creds.Path != "/" && !strings.Contains(target, creds.Path) {
-		target = strings.TrimRight(target, "/") + creds.Path
+	if metadata.Path != "" && metadata.Path != "/" && !strings.Contains(target, metadata.Path) {
+		target = strings.TrimRight(target, "/") + metadata.Path
 	}
 
 	// Use the provided method only when is not disruptive
-	method := strings.ToUpper(creds.Method)
+	method := strings.ToUpper(metadata.Method)
 	switch method {
 	case http.MethodGet, http.MethodHead, http.MethodOptions:
 	default:
@@ -96,7 +98,7 @@ func (v *Validator) Validate(ctx context.Context, creds Credentials) (veles.Vali
 	authResp.Body.Close()
 
 	// The status changed into a valid status, the secret is valid
-	if authStatus >= 200 && authStatus <= 400 {
+	if authStatus >= 200 && authStatus < 400 {
 		return veles.ValidationValid, nil
 	}
 

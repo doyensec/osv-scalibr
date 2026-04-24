@@ -61,9 +61,11 @@ func TestDetector_truePositives(t *testing.T) {
 		input: "Target: " + testTargetURL + " Authorization: Basic " + testBase64,
 		want: []veles.Secret{
 			basicauth.Credentials{
-				TargetURL: testTargetURL,
-				Username:  testUsername,
-				Password:  testPassword,
+				Metadata: &basicauth.Metadata{
+					TargetURL: testTargetURL,
+				},
+				Username: testUsername,
+				Password: testPassword,
 			},
 		},
 	}, {
@@ -71,9 +73,11 @@ func TestDetector_truePositives(t *testing.T) {
 		input: "Connecting to https://github.com/api/v3 using Authorization: Basic " + testComplexBase64,
 		want: []veles.Secret{
 			basicauth.Credentials{
-				TargetURL: "https://github.com/api/v3",
-				Username:  "user123",
-				Password:  "super:secret:pass",
+				Metadata: &basicauth.Metadata{
+					TargetURL: "https://github.com/api/v3",
+				},
+				Username: "user123",
+				Password: "super:secret:pass",
 			},
 		},
 	}, {
@@ -83,9 +87,11 @@ func TestDetector_truePositives(t *testing.T) {
   -F from='User'`,
 		want: []veles.Secret{
 			basicauth.Credentials{
-				TargetURL: testTargetURL,
-				Username:  testUsername,
-				Password:  testPassword,
+				Metadata: &basicauth.Metadata{
+					TargetURL: testTargetURL,
+				},
+				Username: testUsername,
+				Password: testPassword,
 			},
 		},
 	}, {
@@ -93,9 +99,11 @@ func TestDetector_truePositives(t *testing.T) {
 		input: `{"url":"` + testTargetURL + `","headers":{"Authorization":"Basic ` + testBase64 + `"}}`,
 		want: []veles.Secret{
 			basicauth.Credentials{
-				TargetURL: testTargetURL,
-				Username:  testUsername,
-				Password:  testPassword,
+				Metadata: &basicauth.Metadata{
+					TargetURL: testTargetURL,
+				},
+				Username: testUsername,
+				Password: testPassword,
 			},
 		},
 	}, {
@@ -103,14 +111,18 @@ func TestDetector_truePositives(t *testing.T) {
 		input: testTargetURL + "\nAuthorization: Basic " + testBase64 + "\n\nhttp://other.local\nAuthorization: Basic " + testBase64,
 		want: []veles.Secret{
 			basicauth.Credentials{
-				TargetURL: testTargetURL,
-				Username:  testUsername,
-				Password:  testPassword,
+				Metadata: &basicauth.Metadata{
+					TargetURL: testTargetURL,
+				},
+				Username: testUsername,
+				Password: testPassword,
 			},
 			basicauth.Credentials{
-				TargetURL: "http://other.local",
-				Username:  testUsername,
-				Password:  testPassword,
+				Metadata: &basicauth.Metadata{
+					TargetURL: "http://other.local",
+				},
+				Username: testUsername,
+				Password: testPassword,
 			},
 		},
 	}, {
@@ -118,9 +130,9 @@ func TestDetector_truePositives(t *testing.T) {
 		input: testTargetURL + strings.Repeat(" ", 2500) + "Authorization: Basic " + testBase64,
 		want: []veles.Secret{
 			basicauth.Credentials{
-				TargetURL: "", // Expected to be empty
-				Username:  testUsername,
-				Password:  testPassword,
+				Metadata: nil,
+				Username: testUsername,
+				Password: testPassword,
 			},
 		},
 	}, {
@@ -128,9 +140,9 @@ func TestDetector_truePositives(t *testing.T) {
 		input: "Just a random log entry without a URL\nAuthorization: Basic " + testBase64,
 		want: []veles.Secret{
 			basicauth.Credentials{
-				TargetURL: "", // Partial match logic active
-				Username:  testUsername,
-				Password:  testPassword,
+				Metadata: nil,
+				Username: testUsername,
+				Password: testPassword,
 			},
 		},
 	}}

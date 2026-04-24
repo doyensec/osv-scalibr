@@ -19,9 +19,14 @@ package basicauth
 
 // Credentials contains the extracted target URL/Path and decoded basic auth payload.
 type Credentials struct {
+	Metadata *Metadata
+	Username string
+	Password string
+}
+
+// Metadata contains info on how credentials might be validated
+type Metadata struct {
 	TargetURL string
 	Path      string
 	Method    string
-	Username  string
-	Password  string
 }

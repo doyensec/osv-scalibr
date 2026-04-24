@@ -57,7 +57,7 @@ func (d *Detector) Detect(data []byte) ([]veles.Secret, []int) {
 			continue
 		}
 
-		enrichWithContext(data, m[0], m[1], d.SearchWindow, creds)
+		creds.Metadata = extractMetadata(data, m[0], m[1], d.SearchWindow)
 
 		secrets = append(secrets, *creds)
 		indices = append(indices, m[0])
@@ -83,7 +83,7 @@ func extractPayload(b64Data []byte) (*Credentials, bool) {
 	}, true
 }
 
-func enrichWithContext(data []byte, matchStart, matchEnd, windowSize int, creds *Credentials) {
+func extractMetadata(data []byte, matchStart, matchEnd, windowSize int) *Metadata {
 	start := matchStart - windowSize
 	if start < 0 {
 		start = 0
@@ -129,14 +129,21 @@ func enrichWithContext(data []byte, matchStart, matchEnd, windowSize int, creds 
 		return res
 	}
 
+	res := Metadata{}
 	if m := findClosest(requestLineRe); m != nil {
-		creds.Method = strings.ToUpper(string(m[1]))
-		creds.Path = string(m[2])
+		res.Method = strings.ToUpper(string(m[1]))
+		res.Path = string(m[2])
 	}
 
 	if m := findClosest(hostRe); m != nil {
-		creds.TargetURL = string(m[1])
+		res.TargetURL = string(m[1])
 	} else if m := findClosest(urlRe); m != nil {
-		creds.TargetURL = string(m[0])
+		res.TargetURL = string(m[0])
 	}
+
+	if res.TargetURL == "" {
+		return nil
+	}
+
+	return &res
 }

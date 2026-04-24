@@ -61,11 +61,11 @@ func setupMockServer(t *testing.T, expectedMethod, expectedPath, username, passw
 func TestValidator_Validate(t *testing.T) {
 	tests := []struct {
 		name             string
-		credentials      basicauth.Credentials // TargetURL will be dynamically overwritten with the mock server URL
-		unauthStatusCode int                   // Status the server should return when no Auth header is present
-		authStatusCode   int                   // Status the server should return when the Auth header is present
-		expectedMethod   string                // To verify method downgrading
-		expectedPath     string                // To verify path appending
+		credentials      basicauth.Credentials
+		unauthStatusCode int
+		authStatusCode   int
+		expectedMethod   string
+		expectedPath     string
 		expectedStatus   veles.ValidationStatus
 		wantErr          error
 	}{
@@ -74,8 +74,10 @@ func TestValidator_Validate(t *testing.T) {
 			credentials: basicauth.Credentials{
 				Username: "admin",
 				Password: "password123",
-				Method:   http.MethodGet,
-				Path:     "/api/v1/data",
+				Metadata: &basicauth.Metadata{
+					Method: http.MethodGet,
+					Path:   "/api/v1/data",
+				},
 			},
 			unauthStatusCode: http.StatusUnauthorized,
 			authStatusCode:   http.StatusOK,
@@ -86,13 +88,14 @@ func TestValidator_Validate(t *testing.T) {
 		{
 			name: "valid_credentials_unauthorized_to_forbidden",
 			credentials: basicauth.Credentials{
+				Metadata: &basicauth.Metadata{},
 				Username: "user",
 				Password: "password123",
 			},
 			unauthStatusCode: http.StatusUnauthorized,
 			authStatusCode:   http.StatusForbidden,
 			expectedMethod:   http.MethodGet,
-			expectedPath:     "/", // Default path when not specified
+			expectedPath:     "/",
 			expectedStatus:   veles.ValidationValid,
 		},
 		{
@@ -114,7 +117,7 @@ func TestValidator_Validate(t *testing.T) {
 				Username: "admin",
 				Password: "password123",
 			},
-			unauthStatusCode: http.StatusOK, // Endpoint returns 200 even without credentials
+			unauthStatusCode: http.StatusOK,
 			authStatusCode:   http.StatusOK,
 			expectedMethod:   http.MethodGet,
 			expectedPath:     "/",
@@ -126,7 +129,9 @@ func TestValidator_Validate(t *testing.T) {
 			credentials: basicauth.Credentials{
 				Username: "admin",
 				Password: "password123",
-				Method:   http.MethodPost, // Should be downgraded to GET
+				Metadata: &basicauth.Metadata{
+					Method: http.MethodPost,
+				},
 			},
 			unauthStatusCode: http.StatusUnauthorized,
 			authStatusCode:   http.StatusOK,
@@ -148,17 +153,16 @@ func TestValidator_Validate(t *testing.T) {
 			wantErr:          cmpopts.AnyError,
 		},
 		{
-			name: "missing_target_url",
-			credentials: basicauth.Credentials{
-				TargetURL: "", // Won't make HTTP request
-			},
+			name:           "missing_target_url",
+			credentials:    basicauth.Credentials{},
 			expectedStatus: veles.ValidationFailed,
+			wantErr:        cmpopts.AnyError,
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			// Spin up the mock server using our helper
+
 			server := setupMockServer(
 				t,
 				test.expectedMethod,
@@ -176,8 +180,8 @@ func TestValidator_Validate(t *testing.T) {
 
 			// Inject the mock server URL into the credentials (unless testing the empty URL case)
 			creds := test.credentials
-			if creds.TargetURL != "" || test.name != "missing_target_url" {
-				creds.TargetURL = server.URL
+			if creds.Metadata != nil {
+				creds.Metadata.TargetURL = server.URL
 			}
 
 			// Execute
@@ -200,9 +204,11 @@ func TestValidator_InvalidURL(t *testing.T) {
 
 	// Provide a malformed URL that fails HTTP request construction
 	creds := basicauth.Credentials{
-		TargetURL: string([]byte{0x7f}), // Invalid control character in URL
-		Username:  "admin",
-		Password:  "password",
+		Metadata: &basicauth.Metadata{
+			TargetURL: string([]byte{0x7f}), // Invalid control character in URL
+		},
+		Username: "admin",
+		Password: "password",
 	}
 
 	status, err := validator.Validate(t.Context(), creds)
@@ -219,9 +225,11 @@ func TestValidator_NetworkError(t *testing.T) {
 	// Use a URL that will cause an immediate network error (nothing listening)
 	validator := basicauth.NewValidator()
 	creds := basicauth.Credentials{
-		TargetURL: "http://localhost:1",
-		Username:  "admin",
-		Password:  "password",
+		Metadata: &basicauth.Metadata{
+			TargetURL: "http://localhost:1",
+		},
+		Username: "admin",
+		Password: "password",
 	}
 
 	status, err := validator.Validate(t.Context(), creds)
@@ -248,9 +256,11 @@ func TestValidator_ContextCancellation(t *testing.T) {
 	cancel() // Cancel immediately before doing the request
 
 	creds := basicauth.Credentials{
-		TargetURL: server.URL,
-		Username:  "admin",
-		Password:  "password",
+		Metadata: &basicauth.Metadata{
+			TargetURL: server.URL,
+		},
+		Username: "admin",
+		Password: "password",
 	}
 
 	status, err := validator.Validate(ctx, creds)

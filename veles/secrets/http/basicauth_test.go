@@ -78,7 +78,7 @@ func TestDetector_truePositives(t *testing.T) {
 		// Client side collections
 		{
 			name: "bruno-1",
-			file: "bruno/basic/Basic Auth Header.yml",
+			file: "bruno/basic/BasicAuthHeader.yml",
 			want: []veles.Secret{credMock},
 		},
 		{
@@ -185,7 +185,7 @@ func TestDetector_trueNegatives(t *testing.T) {
 		// Credentials are present, but not in base64 format
 		{
 			name: "bruno-2",
-			file: "bruno/basic/Basic Auth stored properly.yml",
+			file: "bruno/basic/BasicAuthStoredProperly.yml",
 		},
 		{
 			name:  "curl_user_short_flag",

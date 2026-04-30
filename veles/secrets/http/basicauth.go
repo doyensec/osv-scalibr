@@ -30,7 +30,7 @@ var (
 	// ref: https://www.rfc-editor.org/rfc/rfc7617
 	base64Re = regexp.MustCompile(
 		`(?is)` +
-			`\bAuth(?:orization)?` +
+			`\bAuthorization` +
 			// Delimiters (handles HTTP/flat formats)
 			`["'\s=:]*` +
 			// Optional nearby "value" key (handles JSON/YAML)

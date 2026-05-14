@@ -27,6 +27,7 @@ import (
 	"github.com/google/osv-scalibr/inventory"
 	"github.com/google/osv-scalibr/inventory/location"
 	"github.com/google/osv-scalibr/veles"
+	"github.com/google/osv-scalibr/veles/pii/ussocialsecuritynumber"
 	velesanthropicapikey "github.com/google/osv-scalibr/veles/secrets/anthropicapikey"
 	"github.com/google/osv-scalibr/veles/secrets/awsaccesskey"
 	velesazurestorageaccountaccesskey "github.com/google/osv-scalibr/veles/secrets/azurestorageaccountaccesskey"
@@ -330,6 +331,8 @@ func velesSecretToProto(s veles.Secret) (*spb.SecretData, error) {
 		return discordBotTokenToProto(t), nil
 	case veleshttp.BasicAuthCredentials:
 		return httpBasicAuthToProto(t), nil
+	case ussocialsecuritynumber.USSocialSecurityNumber:
+		return usSocialSecurityNumberToProto(t), nil
 	default:
 		return nil, fmt.Errorf("%w: %T", ErrUnsupportedSecretType, s)
 	}
@@ -1154,6 +1157,16 @@ func salesforceOAuth2ClientCredentialsToProto(s salesforceoauth2client.Credentia
 				Id:     s.ID,
 				Secret: s.Secret,
 				Url:    s.URL,
+			},
+		},
+	}
+}
+
+func usSocialSecurityNumberToProto(s ussocialsecuritynumber.USSocialSecurityNumber) *spb.SecretData {
+	return &spb.SecretData{
+		Secret: &spb.SecretData_UsSocialSecurityNumber{
+			UsSocialSecurityNumber: &spb.SecretData_USSocialSecurityNumber{
+				Value: s.Value,
 			},
 		},
 	}

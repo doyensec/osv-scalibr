@@ -30,7 +30,6 @@ func NewDetector() veles.Detector {
 		ContextWindowAfter:  contextWindowSize,
 		KeywordsRe:          passportKeywords,
 		FromMatch: func(b []byte, contextMatch bool) (sensitiveinformation.SensitiveInformation, bool) {
-
 			likelihood := sensitiveinformation.LikelihoodUnlikely
 			if contextMatch {
 				likelihood = sensitiveinformation.LikelihoodLikely

@@ -16,28 +16,9 @@ const (
 )
 
 var passportRe = regexp.MustCompile(`\b[A-Z0-9][0-9]{8}\b`)
-
 var passportKeywords = simpleregex.KeywordsRe([]string{
-	`u[\s-]*s[\s-]*passport`,
-	`u[\s-]*s[\s-]*a[\s-]*passport`,
-	`united[\s-]*states[\s-]*passport`,
-	`american[\s-]*passport`,
-
-	`passport[\s-]*number`,
-	`passport[\s-]*no`,
-	`passport[\s-]*num`,
-	`passport[\s-]*#`,
-
-	`u[\s-]*s[\s-]*passport[\s-]*number`,
-	`u[\s-]*s[\s-]*passport[\s-]*no`,
-	`u[\s-]*s[\s-]*passport[\s-]*#`,
-
-	`u[\s-]*s[\s-]*travel[\s-]*document`,
-	`united[\s-]*states[\s-]*travel[\s-]*document`,
-	`travel[\s-]*document[\s-]*number`,
-
-	`passport[\s-]*book[\s-]*number`,
-	`passport[\s-]*card[\s-]*number`,
+	`\bpassport\b`,
+	`travel[\s-]*document`,
 })
 
 // NewDetector returns a Detector that finds US passport numbers.

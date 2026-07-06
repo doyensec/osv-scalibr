@@ -1,0 +1,6 @@
+{
+  "name": "vendor/project",
+  "require": {
+    "vendor/branch": "dev-master"
+  }
+}

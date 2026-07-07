@@ -1,0 +1,22 @@
+{
+  "author": {
+    "email": "editor@microsoft.com"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "default_locale": "en_US",
+  "description": "__MSG_extDesc__",
+  "host_permissions": ["https://*.office.com/*", "https://*.microsoft.com/*"],
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
+  "manifest_version": 3,
+  "minimum_chrome_version": "88",
+  "name": "__MSG_extName__",
+  "permissions": ["storage", "contextMenus", "scripting"],
+  "update_url": "https://edge.microsoft.com/extensionwebstorebase/v1/crx",
+  "version": "1.0.0"
+}

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package extensions extracts chrome extensions.
+// Package extensions extracts Chromium-based browser extensions.
 package extensions
 
 import (
@@ -34,18 +34,21 @@ import (
 	cpb "github.com/google/osv-scalibr/binary/proto/config_go_proto"
 )
 
-// Name is the name for the Chrome extensions extractor
+// Name is the name for the Chrome extensions extractor.
 const Name = "chrome/extensions"
 
 var (
 	windowsChromeExtensionsPattern   = regexp.MustCompile(`(?m)\/Google\/Chrome(?: Beta| SxS| for Testing|)\/User Data\/Default\/Extensions\/[a-p]{32}\/[^\/]+\/manifest\.json$`)
 	windowsChromiumExtensionsPattern = regexp.MustCompile(`(?m)\/Chromium\/User Data\/Default\/Extensions\/[a-p]{32}\/[^\/]+\/manifest\.json$`)
+	windowsEdgeExtensionsPattern     = regexp.MustCompile(`(?m)\/Microsoft\/Edge(?: Beta| Dev| SxS|)\/User Data\/[^\/]+\/Extensions\/[a-p]{32}\/[^\/]+\/manifest\.json$`)
 
 	macosChromeExtensionsPattern   = regexp.MustCompile(`(?m)\/Google\/Chrome(?: Beta| SxS| for Testing| Canary|)\/Default\/Extensions\/[a-p]{32}\/[^\/]+\/manifest\.json$`)
 	macosChromiumExtensionsPattern = regexp.MustCompile(`(?m)\/Chromium\/Default\/Extensions\/[a-p]{32}\/[^\/]+\/manifest\.json$`)
+	macosEdgeExtensionsPattern     = regexp.MustCompile(`(?m)\/Microsoft Edge(?: Beta| Dev| Canary|)\/[^\/]+\/Extensions\/[a-p]{32}\/[^\/]+\/manifest\.json$`)
 
 	linuxChromeExtensionsPattern   = regexp.MustCompile(`(?m)\/google-chrome(?:-beta|-unstable|-for-testing|)\/Default\/Extensions\/[a-p]{32}\/[^\/]+\/manifest\.json$`)
 	linuxChromiumExtensionsPattern = regexp.MustCompile(`(?m)\/chromium\/Default\/Extensions\/[a-p]{32}\/[^\/]+\/manifest\.json$`)
+	linuxEdgeExtensionsPattern     = regexp.MustCompile(`(?m)\/microsoft-edge(?:-beta|-dev|)\/[^\/]+\/Extensions\/[a-p]{32}\/[^\/]+\/manifest\.json$`)
 )
 
 type manifest struct {
@@ -78,10 +81,10 @@ type message struct {
 	Message     string `json:"message"`
 }
 
-// Extractor extracts chrome extensions
+// Extractor extracts Chromium-based browser extensions.
 type Extractor struct{}
 
-// New returns an chrome extractor.
+// New returns a Chrome extensions extractor.
 func New(cfg *cpb.PluginConfig) (filesystem.Extractor, error) {
 	return &Extractor{}, nil
 }
@@ -99,7 +102,7 @@ func (e Extractor) Requirements() *plugin.Capabilities {
 	}
 }
 
-// FileRequired returns true if the file is chrome manifest extension
+// FileRequired returns true if the file is a Chromium-based browser extension manifest.
 func (e Extractor) FileRequired(api filesystem.FileAPI) bool {
 	path := api.Path()
 	path = filepath.ToSlash(path)
@@ -111,17 +114,17 @@ func (e Extractor) FileRequired(api filesystem.FileAPI) bool {
 
 	switch runtime.GOOS {
 	case "windows":
-		return windowsChromeExtensionsPattern.MatchString(path) || windowsChromiumExtensionsPattern.MatchString(path)
+		return windowsChromeExtensionsPattern.MatchString(path) || windowsChromiumExtensionsPattern.MatchString(path) || windowsEdgeExtensionsPattern.MatchString(path)
 	case "linux":
-		return linuxChromeExtensionsPattern.MatchString(path) || linuxChromiumExtensionsPattern.MatchString(path)
+		return linuxChromeExtensionsPattern.MatchString(path) || linuxChromiumExtensionsPattern.MatchString(path) || linuxEdgeExtensionsPattern.MatchString(path)
 	case "darwin":
-		return macosChromeExtensionsPattern.MatchString(path) || macosChromiumExtensionsPattern.MatchString(path)
+		return macosChromeExtensionsPattern.MatchString(path) || macosChromiumExtensionsPattern.MatchString(path) || macosEdgeExtensionsPattern.MatchString(path)
 	default:
 		return false
 	}
 }
 
-// Extract extracts chrome extensions
+// Extract extracts Chromium-based browser extensions.
 func (e Extractor) Extract(ctx context.Context, input *filesystem.ScanInput) (inventory.Inventory, error) {
 	var m manifest
 	if err := json.NewDecoder(input.Reader).Decode(&m); err != nil {

@@ -41,28 +41,40 @@ func TestExtractor_FileRequired(t *testing.T) {
 		{GOOS: "windows", inputPath: `%LOCALAPPDATA%\Google\Chrome SxS\User Data\Default\Extensions\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\version\manifest.json`, want: true},
 		{GOOS: "windows", inputPath: `%LOCALAPPDATA%\Google\Chrome for Testing\User Data\Default\Extensions\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\version\manifest.json`, want: true},
 		{GOOS: "windows", inputPath: `%LOCALAPPDATA%\Chromium\User Data\Default\Extensions\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\version\manifest.json`, want: true},
+		{GOOS: "windows", inputPath: `%LOCALAPPDATA%\Microsoft\Edge\User Data\Default\Extensions\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\version\manifest.json`, want: true},
+		{GOOS: "windows", inputPath: `%LOCALAPPDATA%\Microsoft\Edge Dev\User Data\Profile 1\Extensions\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\version\manifest.json`, want: true},
 
 		{GOOS: "windows", inputPath: `%LOCALAPPDATA%\Chromium\User Data\Default\Extensions\invalid-id\version\manifest.json`, want: false},
 		{GOOS: "windows", inputPath: `%LOCALAPPDATA%\Chromium\User Data\Default\Extensions\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\bad\path\manifest.json`, want: false},
+		{GOOS: "windows", inputPath: `%LOCALAPPDATA%\Microsoft\Edge\User Data\Default\Extensions\invalid-id\version\manifest.json`, want: false},
+		{GOOS: "windows", inputPath: `%LOCALAPPDATA%\Microsoft\Edge\User Data\Default\Extensions\aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\bad\path\manifest.json`, want: false},
 
 		{GOOS: "darwin", inputPath: `~/Library/Application Support/Google/Chrome/Default/Extensions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/version/manifest.json`, want: true},
 		{GOOS: "darwin", inputPath: `~/Library/Application Support/Google/Chrome Beta/Default/Extensions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/version/manifest.json`, want: true},
 		{GOOS: "darwin", inputPath: `~/Library/Application Support/Google/Chrome Canary/Default/Extensions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/version/manifest.json`, want: true},
 		{GOOS: "darwin", inputPath: `~/Library/Application Support/Google/Chrome for Testing/Default/Extensions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/version/manifest.json`, want: true},
 		{GOOS: "darwin", inputPath: `~/Library/Application Support/Chromium/Default/Extensions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/version/manifest.json`, want: true},
+		{GOOS: "darwin", inputPath: `~/Library/Application Support/Microsoft Edge/Default/Extensions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/version/manifest.json`, want: true},
+		{GOOS: "darwin", inputPath: `~/Library/Application Support/Microsoft Edge Dev/Profile 1/Extensions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/version/manifest.json`, want: true},
 		{GOOS: "darwin", inputPath: `/Users/username/Library/Application Support/Google/Chrome/Default/Extensions/aapbdbdomjkkjkaonfhkkikfgjllcleb/1.0.0.6_0/manifest.json`, want: true},
 
 		{GOOS: "darwin", inputPath: `~/Library/Application Support/Chromium/Default/Extensions/invalid-id/version/manifest.json`, want: false},
 		{GOOS: "darwin", inputPath: `~/Library/Application Support/Chromium/Default/Extensions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bad/path/manifest.json`, want: false},
+		{GOOS: "darwin", inputPath: `~/Library/Application Support/Microsoft Edge/Default/Extensions/invalid-id/version/manifest.json`, want: false},
+		{GOOS: "darwin", inputPath: `~/Library/Application Support/Microsoft Edge/Default/Extensions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bad/path/manifest.json`, want: false},
 
 		{GOOS: "linux", inputPath: `~/.config/google-chrome/Default/Extensions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/version/manifest.json`, want: true},
 		{GOOS: "linux", inputPath: `~/.config/google-chrome-beta/Default/Extensions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/version/manifest.json`, want: true},
 		{GOOS: "linux", inputPath: `~/.config/google-chrome-unstable/Default/Extensions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/version/manifest.json`, want: true},
 		{GOOS: "linux", inputPath: `~/.config/google-chrome-for-testing/Default/Extensions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/version/manifest.json`, want: true},
 		{GOOS: "linux", inputPath: `~/.config/chromium/Default/Extensions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/version/manifest.json`, want: true},
+		{GOOS: "linux", inputPath: `~/.config/microsoft-edge/Default/Extensions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/version/manifest.json`, want: true},
+		{GOOS: "linux", inputPath: `~/.config/microsoft-edge-dev/Profile 1/Extensions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/version/manifest.json`, want: true},
 
 		{GOOS: "linux", inputPath: `~/.config/chromium/Default/Extensions/invalid-id/version/manifest.json`, want: false},
 		{GOOS: "linux", inputPath: `~/.config/chromium/Default/Extensions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bad/path/manifest.json`, want: false},
+		{GOOS: "linux", inputPath: `~/.config/microsoft-edge/Default/Extensions/invalid-id/version/manifest.json`, want: false},
+		{GOOS: "linux", inputPath: `~/.config/microsoft-edge/Default/Extensions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bad/path/manifest.json`, want: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.inputPath, func(t *testing.T) {
@@ -137,6 +149,51 @@ func TestExtractor_Extract(t *testing.T) {
 						Name:                 "Google Docs Offline",
 						Permissions:          []string{"alarms", "storage", "unlimitedStorage", "offscreen"},
 						UpdateURL:            "https://clients2.google.com/service/update2/crx",
+					},
+				},
+			},
+		},
+		{
+			Name: "edge no locale specified",
+			InputConfig: extracttest.ScanInputMockConfig{
+				Path: "testdata/odfafepnkmbhccpbejgmiehpchacaeak/1.63.2/manifest.json",
+			},
+			WantPackages: []*extractor.Package{
+				{
+					Name:     "odfafepnkmbhccpbejgmiehpchacaeak",
+					Version:  "1.63.2",
+					PURLType: purl.TypeGeneric,
+					Metadata: &extensions.Metadata{
+						Description:          "An efficient blocker: easy on memory and CPU footprint.",
+						HostPermissions:      []string{"<all_urls>"},
+						ManifestVersion:      3,
+						MinimumChromeVersion: "105",
+						Name:                 "uBlock Origin",
+						Permissions:          []string{"alarms", "storage", "unlimitedStorage", "declarativeNetRequest", "scripting"},
+						UpdateURL:            "https://edge.microsoft.com/extensionwebstorebase/v1/crx",
+					},
+				},
+			},
+		},
+		{
+			Name: "edge locale specified",
+			InputConfig: extracttest.ScanInputMockConfig{
+				Path: "testdata/hokifickgkhplphjiodbggjmoafhignh/1.0.0/manifest.json",
+			},
+			WantPackages: []*extractor.Package{
+				{
+					Name:     "hokifickgkhplphjiodbggjmoafhignh",
+					Version:  "1.0.0",
+					PURLType: purl.TypeGeneric,
+					Metadata: &extensions.Metadata{
+						AuthorEmail:          "editor@microsoft.com",
+						Description:          "Write with confidence with grammar, spelling, and style suggestions.",
+						HostPermissions:      []string{"https://*.office.com/*", "https://*.microsoft.com/*"},
+						ManifestVersion:      3,
+						MinimumChromeVersion: "88",
+						Name:                 "Microsoft Editor",
+						Permissions:          []string{"storage", "contextMenus", "scripting"},
+						UpdateURL:            "https://edge.microsoft.com/extensionwebstorebase/v1/crx",
 					},
 				},
 			},

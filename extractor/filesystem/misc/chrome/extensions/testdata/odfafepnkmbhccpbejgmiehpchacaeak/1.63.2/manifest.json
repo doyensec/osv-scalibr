@@ -1,0 +1,23 @@
+{
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "uBlock Origin"
+  },
+  "background": {
+    "service_worker": "js/background.js"
+  },
+  "description": "An efficient blocker: easy on memory and CPU footprint.",
+  "host_permissions": ["<all_urls>"],
+  "icons": {
+    "16": "img/icon_16.png",
+    "32": "img/icon_32.png",
+    "64": "img/icon_64.png",
+    "128": "img/icon_128.png"
+  },
+  "manifest_version": 3,
+  "minimum_chrome_version": "105",
+  "name": "uBlock Origin",
+  "permissions": ["alarms", "storage", "unlimitedStorage", "declarativeNetRequest", "scripting"],
+  "update_url": "https://edge.microsoft.com/extensionwebstorebase/v1/crx",
+  "version": "1.63.2"
+}

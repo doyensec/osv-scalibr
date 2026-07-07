@@ -32,13 +32,13 @@ See the docs on [how to add a new Extractor](/docs/new_extractor.md).
 
 ### OS packages
 
-| Inventory Type    | Details                        | Extractor Plugin                             |
-|-------------------| ------------------------------ |----------------------------------------------|
-| Alpine            | APK                            | `os/apk`                                     |
-| Chrome extensions |                                | `chrome/extensions`                          |
-| COS               | cos-package-info.json          | `os/cos`                                     |
-| DPKG              | e.g. Debian, Ubuntu            | `os/dpkg`                                    |
-| Chisel            |                                | `os/chisel`                                  |
+| Inventory Type                        | Details                        | Extractor Plugin                             |
+|---------------------------------------| ------------------------------ |----------------------------------------------|
+| Alpine                               | APK                            | `os/apk`                                     |
+| Chromium-based browser extensions    | Chrome, Chromium, Edge         | `chrome/extensions`                          |
+| COS                                  | cos-package-info.json          | `os/cos`                                     |
+| DPKG                                 | e.g. Debian, Ubuntu            | `os/dpkg`                                    |
+| Chisel                               |                                | `os/chisel`                                  |
 | Nix               |                                | `os/nix`                                     |
 | OPKG              | e.g. OpenWrt                   | `os/dpkg`                                    |
 | RPM               | e.g. RHEL, CentOS, Rocky Linux, AlmaLinux | `os/rpm`                                     |
@@ -240,13 +240,13 @@ See the docs on [how to add a new Extractor](/docs/new_extractor.md).
 
 ### Misc
 
-| Type                               | Extractor Plugin    |
-|------------------------------------| ------------------- |
-| Wordpress plugins                  | `wordpress/plugins` |
-| VSCode extensions                  | `vscode/extensions` |
-| Chrome extensions                  | `chrome/extensions` |
-| Maven entries in Bazel build files | `os/bazelmaven`     |
-| NetScaler installations            | `netscaler`         |
+| Type                                | Extractor Plugin    |
+|-------------------------------------| ------------------- |
+| Wordpress plugins                   | `wordpress/plugins` |
+| VSCode extensions                   | `vscode/extensions` |
+| Chromium-based browser extensions   | `chrome/extensions` |
+| Maven entries in Bazel build files  | `os/bazelmaven`     |
+| NetScaler installations             | `netscaler`         |
 | GitHub Actions workflow dependencies| `github/actions`    |
 | Git repositories (and submodules)   | `misc/gitrepo`      |
 

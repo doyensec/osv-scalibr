@@ -245,6 +245,7 @@ See the docs on [how to add a new Extractor](/docs/new_extractor.md).
 | Wordpress plugins                   | `wordpress/plugins` |
 | VSCode extensions                   | `vscode/extensions` |
 | Chromium-based browser extensions   | `chrome/extensions` |
+| Firefox extensions                  | `firefox/extensions` |
 | Maven entries in Bazel build files  | `os/bazelmaven`     |
 | NetScaler installations             | `netscaler`         |
 | GitHub Actions workflow dependencies| `github/actions`    |

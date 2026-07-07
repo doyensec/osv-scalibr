@@ -88,6 +88,7 @@ import (
 	"github.com/google/osv-scalibr/extractor/filesystem/language/swift/podfilelock"
 	"github.com/google/osv-scalibr/extractor/filesystem/misc/bazelmaven"
 	chromeextensions "github.com/google/osv-scalibr/extractor/filesystem/misc/chrome/extensions"
+	firefoxextensions "github.com/google/osv-scalibr/extractor/filesystem/misc/firefox/extensions"
 	"github.com/google/osv-scalibr/extractor/filesystem/misc/githubactions"
 	"github.com/google/osv-scalibr/extractor/filesystem/misc/gitrepo"
 	"github.com/google/osv-scalibr/extractor/filesystem/misc/netscaler"
@@ -470,10 +471,11 @@ var (
 
 	// Misc artifact extractors.
 	Misc = InitMap{
-		vscodeextensions.Name: {vscodeextensions.New},
-		wordpressplugins.Name: {wordpressplugins.New},
-		chromeextensions.Name: {chromeextensions.New},
-		netscaler.Name:        {netscaler.New},
+		vscodeextensions.Name:  {vscodeextensions.New},
+		wordpressplugins.Name:  {wordpressplugins.New},
+		chromeextensions.Name:  {chromeextensions.New},
+		firefoxextensions.Name: {firefoxextensions.New},
+		netscaler.Name:         {netscaler.New},
 	}
 
 	// MiscSource extractors for miscellaneous purposes.

@@ -1,0 +1,16 @@
+{
+  "addons": [
+    {
+      "id": "firefox-compact-dark@mozilla.org",
+      "version": "1.3",
+      "type": "theme",
+      "location": "app-builtin",
+      "path": "resource://builtin-themes/firefox-compact-dark/",
+      "active": true,
+      "defaultLocale": {
+        "name": "Dark",
+        "description": "A dark theme."
+      }
+    }
+  ]
+}

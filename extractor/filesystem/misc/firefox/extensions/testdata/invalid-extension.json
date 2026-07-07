@@ -1,0 +1,12 @@
+{
+  "addons": [
+    {
+      "id": "missing-version@example.com",
+      "type": "extension",
+      "location": "app-profile",
+      "defaultLocale": {
+        "name": "Missing Version"
+      }
+    }
+  ]
+}

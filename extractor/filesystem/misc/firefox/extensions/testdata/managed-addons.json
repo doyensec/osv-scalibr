@@ -1,0 +1,57 @@
+{
+  "addons": [
+    {
+      "id": "profile-extension@mozilla.org",
+      "version": "1.2.3",
+      "type": "extension",
+      "location": "app-profile",
+      "path": "/home/username/.mozilla/firefox/abcd1234.default-release/extensions/profile-extension@mozilla.org.xpi",
+      "sourceURI": "https://example.com/profile-extension.xpi",
+      "installDate": 1740566188000,
+      "updateDate": 1740566188000,
+      "signedState": 2,
+      "active": true,
+      "userDisabled": false,
+      "appDisabled": false,
+      "defaultLocale": {
+        "name": "Mozilla Profile Extension",
+        "description": "A user profile extension with a Mozilla-looking ID.",
+        "creator": "Example Publisher",
+        "homepageURL": "https://example.com/profile-extension"
+      }
+    },
+    {
+      "id": "pictureinpicture@mozilla.org",
+      "version": "1.0.0",
+      "type": "extension",
+      "location": "app-builtin",
+      "path": "resource://builtin-addons/pictureinpicture/",
+      "active": true,
+      "defaultLocale": {
+        "name": "Picture-in-Picture"
+      }
+    },
+    {
+      "id": "formautofill@mozilla.org",
+      "version": "1.0.1",
+      "type": "extension",
+      "location": "app-system-defaults",
+      "path": "/Applications/Firefox.app/Contents/Resources/browser/features/formautofill@mozilla.org.xpi",
+      "active": true,
+      "defaultLocale": {
+        "name": "Form Autofill"
+      }
+    },
+    {
+      "id": "ipp-activator@mozilla.com",
+      "version": "0.2.20260622.182020",
+      "type": "extension",
+      "location": "app-profile",
+      "path": "/home/username/.mozilla/firefox/abcd1234.default-release/features/{f126a5be-75c3-413f-864c-1ee7fd6525f9}/ipp-activator@mozilla.com.xpi",
+      "active": true,
+      "defaultLocale": {
+        "name": "IPP Activator"
+      }
+    }
+  ]
+}

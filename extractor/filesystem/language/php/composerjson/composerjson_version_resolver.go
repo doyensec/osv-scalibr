@@ -111,10 +111,8 @@ func parseConstraint(token string) ([]comparator, error) {
 		if err != nil {
 			return nil, err
 		}
-		idx := len(digits) - 2 // highPosition = max(1, position-1)
-		if idx < 0 {
-			idx = 0
-		}
+
+		idx := max(0, len(digits)-2) // highPosition = max(1, position-1)
 		return []comparator{
 			{">=", newVersion(digits)},
 			{"<", newVersion(bump(digits, idx))},

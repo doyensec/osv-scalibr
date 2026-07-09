@@ -23,7 +23,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"deps.dev/util/semver"
 	"github.com/google/osv-scalibr/extractor"
 	"github.com/google/osv-scalibr/extractor/filesystem"
 	"github.com/google/osv-scalibr/extractor/filesystem/osv"
@@ -79,43 +78,11 @@ func isPlatformPackage(name string) bool {
 		strings.HasPrefix(name, "composer-")
 }
 
-// parseSystem is the semver system used to parse Composer constraints.
-//
-// We use NPM rather than semver.Composer for two reasons:
-//
-//  1. deps.dev's semver.Composer parses versions but not constraints: its
-//     operators table has no Composer entry, so semver.Composer.ParseConstraint
-//     panics for every input.
-//  2. NPM is the closest working proxy for Composer. Their constraint syntaxes
-//     are compatible for our needs (^, ~, ||, ranges, wildcards), and NPM's
-//     tokenizer matches Composer's leniencies (stripping a leading "v"/"V",
-//     allowing leading zeros) where the generic DefaultSystem would reject
-//     those. While Composer's ~ and ^ upper bounds differ slightly from NPM's,
-//     the lower bound is identical, and we only read the lower bound (the
-//     minimum satisfying version), so the resolved version is the same.
-//
-// Switch this back to semver.Composer if upstream gains Composer constraint support.
-// @todo is this the best option?
-const parseSystem = semver.NPM
-
-// resolveMinVersion returns the minimum version satisfying the Composer constraint
-func resolveMinVersion(constraint string) (version string, ok bool) {
-	c, err := parseSystem.ParseConstraint(constraint)
-	if err != nil {
-		return "", false
-	}
-	v, err := c.CalculateMinVersion()
-	if err != nil {
-		return "", false
-	}
-	// Ignore the build value. It's not relevant for version comparison.
-	return v.Canon(false), true
-}
-
 func buildPackage(input *filesystem.ScanInput, name string, constraint string, groups []string) *extractor.Package {
 	// @todo how to handle version parsing failures?
 	version := constraint
-	if v, ok := resolveMinVersion(constraint); ok {
+	v, err := GetMinimumVersion(constraint)
+	if err == nil {
 		version = v
 	}
 	return &extractor.Package{

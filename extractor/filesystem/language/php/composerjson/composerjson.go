@@ -27,6 +27,7 @@ import (
 	"github.com/google/osv-scalibr/extractor/filesystem"
 	"github.com/google/osv-scalibr/extractor/filesystem/osv"
 	"github.com/google/osv-scalibr/inventory"
+	"github.com/google/osv-scalibr/log"
 	"github.com/google/osv-scalibr/plugin"
 	"github.com/google/osv-scalibr/purl"
 
@@ -65,9 +66,9 @@ func (e Extractor) FileRequired(api filesystem.FileAPI) bool {
 	return filepath.Base(api.Path()) == "composer.json"
 }
 
-// isPlatformPackage reports whether name refers to a Composer platform
-// pseudo-package (the PHP runtime, an extension, a bundled library, or the
-// Composer runtime itself) rather than a real Packagist package.
+// Check whether the name refers to a platform pseudo-package
+// These packages are not installed by Composer directly
+// https://getcomposer.org/doc/01-basic-usage.md#platform-packages
 func isPlatformPackage(name string) bool {
 	if name == "php" || name == "hhvm" || name == "composer" {
 		return true
@@ -78,12 +79,10 @@ func isPlatformPackage(name string) bool {
 		strings.HasPrefix(name, "composer-")
 }
 
-func buildPackage(input *filesystem.ScanInput, name string, constraint string, groups []string) *extractor.Package {
-	// @todo how to handle version parsing failures?
-	version := constraint
-	v, err := GetMinimumVersion(constraint)
-	if err == nil {
-		version = v
+func buildPackage(input *filesystem.ScanInput, name string, constraint string, groups []string) (*extractor.Package, error) {
+	version, err := GetMinimumVersion(constraint)
+	if err != nil {
+		return nil, fmt.Errorf("could not resolve version for %q from constraint %q: %w", name, constraint, err)
 	}
 	return &extractor.Package{
 		Name:     name,
@@ -93,7 +92,7 @@ func buildPackage(input *filesystem.ScanInput, name string, constraint string, g
 		Metadata: &osv.DepGroupMetadata{
 			DepGroupVals: groups,
 		},
-	}
+	}, nil
 }
 
 // Extract extracts packages from a composer.json file passed through the scan input.
@@ -120,14 +119,24 @@ func (e Extractor) Extract(ctx context.Context, input *filesystem.ScanInput) (in
 		if isPlatformPackage(name) {
 			continue
 		}
-		packages = append(packages, buildPackage(input, name, constraint, []string{}))
+		pkg, err := buildPackage(input, name, constraint, []string{})
+		if err != nil {
+			log.Warnf("Skipping package: %v", err)
+			continue
+		}
+		packages = append(packages, pkg)
 	}
 
 	for name, constraint := range parsedManifest.RequireDev {
 		if isPlatformPackage(name) {
 			continue
 		}
-		packages = append(packages, buildPackage(input, name, constraint, []string{"dev"}))
+		pkg, err := buildPackage(input, name, constraint, []string{"dev"})
+		if err != nil {
+			log.Warnf("Skipping package: %v", err)
+			continue
+		}
+		packages = append(packages, pkg)
 	}
 
 	return inventory.Inventory{Packages: packages}, nil

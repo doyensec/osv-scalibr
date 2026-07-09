@@ -273,18 +273,27 @@ func TestExtractor_Extract(t *testing.T) {
 			},
 		},
 		{
-			Name: "unresolvable constraint keeps raw string",
+			Name: "unresolvable constraints are skipped",
 			InputConfig: extracttest.ScanInputMockConfig{
 				Path: "testdata/fallback.json",
 			},
 			WantPackages: []*extractor.Package{
 				{
-					Name:     "vendor/branch",
-					Version:  "dev-master",
+					Name:     "vendor/valid",
+					Version:  "1.2.3",
 					PURLType: purl.TypeComposer,
 					Location: extractor.LocationFromPath("testdata/fallback.json"),
 					Metadata: &osv.DepGroupMetadata{
 						DepGroupVals: []string{},
+					},
+				},
+				{
+					Name:     "vendor/dev-valid",
+					Version:  "4.5.0",
+					PURLType: purl.TypeComposer,
+					Location: extractor.LocationFromPath("testdata/fallback.json"),
+					Metadata: &osv.DepGroupMetadata{
+						DepGroupVals: []string{"dev"},
 					},
 				},
 			},

@@ -34,14 +34,6 @@ func newVersion(digits []int) version {
 	return v
 }
 
-func parseVersion(s string) (version, error) {
-	digits, err := parseDigits(s)
-	if err != nil {
-		return version{}, err
-	}
-	return newVersion(digits), nil
-}
-
 func (v version) cmp(o version) int {
 	for i := range v {
 		if v[i] != o[i] {
@@ -275,7 +267,7 @@ func getMinimumVersion(dnf [][]comparator) (version, bool) {
 	return best, found
 }
 
-func GetMinimumVersion(constraint string) (string, error) {
+func getMinimumVersionForConstraint(constraint string) (string, error) {
 	dnf, err := parseConstraints(constraint)
 	if err != nil {
 		return "", err
@@ -283,7 +275,7 @@ func GetMinimumVersion(constraint string) (string, error) {
 
 	minimum, ok := getMinimumVersion(dnf)
 	if !ok {
-		return "", fmt.Errorf("Unsatisfiable constraint: %s", constraint)
+		return "", fmt.Errorf("unsatisfiable constraint: %s", constraint)
 	}
 
 	return minimum.String(), nil

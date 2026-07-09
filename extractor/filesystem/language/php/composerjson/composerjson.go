@@ -80,7 +80,7 @@ func isPlatformPackage(name string) bool {
 }
 
 func buildPackage(input *filesystem.ScanInput, name string, constraint string, groups []string) (*extractor.Package, error) {
-	version, err := GetMinimumVersion(constraint)
+	version, err := getMinimumVersionForConstraint(constraint)
 	if err != nil {
 		return nil, fmt.Errorf("could not resolve version for %q from constraint %q: %w", name, constraint, err)
 	}

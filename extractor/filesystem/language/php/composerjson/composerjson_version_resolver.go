@@ -198,12 +198,10 @@ func parseConstraints(constraint string) ([][]comparator, error) {
 
 	// process OR branches
 	for _, orBranch := range orRe.Split(strings.TrimSpace(constraint), -1) {
-		fmt.Printf("or: %v\n", orBranch)
 		var comparators []comparator
 
 		// process hyphenated comparators (e.g. 1.0 - 2.0)
 		for _, match := range hyphenRe.FindAllStringSubmatch(orBranch, -1) {
-			fmt.Printf("hyphen: %v\n", orBranch)
 			p, err := parseHyphenComparators(match[1], match[2])
 			if err != nil {
 				return nil, err
@@ -219,7 +217,6 @@ func parseConstraints(constraint string) ([][]comparator, error) {
 				continue
 			}
 
-			fmt.Printf("and: %v\n", andBranch)
 			p, err := parseConstraint(andBranch)
 			if err != nil {
 				return nil, err
@@ -229,7 +226,6 @@ func parseConstraints(constraint string) ([][]comparator, error) {
 
 		dnf = append(dnf, comparators)
 	}
-	fmt.Printf("dnf: %v\n", dnf)
 	return dnf, nil
 }
 

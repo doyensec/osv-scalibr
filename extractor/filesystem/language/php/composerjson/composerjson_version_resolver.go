@@ -28,12 +28,6 @@ type version [4]int
 
 var versionRe = regexp.MustCompile(`(?i)^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:\.(\d+))?$`)
 
-func newVersion(digits []int) version {
-	var v version
-	copy(v[:], digits)
-	return v
-}
-
 func (v version) cmp(o version) int {
 	for i := range v {
 		if v[i] != o[i] {
@@ -44,6 +38,34 @@ func (v version) cmp(o version) int {
 		}
 	}
 	return 0
+}
+
+// bump returns v with the digit at index idx incremented and all later digits zeroed.
+func (v version) bump(idx int) version {
+	v[idx]++
+	for i := idx + 1; i < len(v); i++ {
+		v[i] = 0
+	}
+	return v
+}
+
+func (v version) holds(p comparator) bool {
+	c := v.cmp(p.v)
+	switch p.op {
+	case "==":
+		return c == 0
+	case "!=":
+		return c != 0
+	case ">":
+		return c > 0
+	case ">=":
+		return c >= 0
+	case "<":
+		return c < 0
+	case "<=":
+		return c <= 0
+	}
+	return false
 }
 
 // next returns the successor in the discrete 4-part version space.
@@ -66,6 +88,26 @@ type comparator struct {
 	v  version
 }
 
+// ----- helper functions -----
+
+// parseDigits parses a version string, returning the normalized version
+// and how many components were given (1-4).
+func parseDigits(s string) (version, int, error) {
+	m := versionRe.FindStringSubmatch(strings.TrimSpace(s))
+	if m == nil {
+		return version{}, 0, fmt.Errorf("cannot parse version %q", s)
+	}
+	var v version
+	n := 0
+	for i, g := range m[1:] {
+		if g != "" {
+			v[i], _ = strconv.Atoi(g)
+			n++
+		}
+	}
+	return v, n, nil
+}
+
 // ----- version resolver -----
 
 var (
@@ -78,23 +120,25 @@ var (
 )
 
 func parseHyphenComparators(from, to string) ([]comparator, error) {
-	fromDigits, err := parseDigits(from)
+	fromVersion, _, err := parseDigits(from)
 	if err != nil {
 		return nil, err
 	}
-	toDigits, err := parseDigits(to)
+	toVersion, toVersionN, err := parseDigits(to)
 	if err != nil {
 		return nil, err
 	}
-	comparators := []comparator{{">=", newVersion(fromDigits)}}
-	if len(toDigits) >= 3 {
-		comparators = append(comparators, comparator{"<=", newVersion(toDigits)})
+	comparators := []comparator{{">=", fromVersion}}
+	// upper bound is fully specified. inclusive comparison
+	if toVersionN >= 3 {
+		comparators = append(comparators, comparator{"<=", toVersion})
 	} else {
+		// upper bound not fully specified. exclusive comparison
 		idx := 0
-		if len(toDigits) >= 2 {
+		if toVersionN >= 2 {
 			idx = 1
 		}
-		comparators = append(comparators, comparator{"<", newVersion(bump(toDigits, idx))})
+		comparators = append(comparators, comparator{"<", toVersion.bump(idx)})
 	}
 	return comparators, nil
 }
@@ -107,50 +151,57 @@ func parseConstraint(token string) ([]comparator, error) {
 
 	// tilde range: the last given digit may float
 	if strings.HasPrefix(token, "~") {
-		digits, err := parseDigits(token[1:])
+		v, n, err := parseDigits(token[1:])
 		if err != nil {
 			return nil, err
 		}
 
-		idx := max(0, len(digits)-2) // highPosition = max(1, position-1)
+		// calculate the index of the last given digit of the version string
+		// used to bump the version for the upper bound
+		idx := max(0, n-2) // lastPosition = max(1, position-1)
 		return []comparator{
-			{">=", newVersion(digits)},
-			{"<", newVersion(bump(digits, idx))},
+			{">=", v},
+			{"<", v.bump(idx)},
 		}, nil
 	}
 
-	// caret range: bump the leftmost non-zero digit
+	// caret range: update to the next compatibility boundary. upper-bound is defined by:
+	//   * bumping the leftmost non-zero digit
+	//   * if the version is < 1.0, bumping the left-most non-zero digit
+	//   * if constraint is unspecified (e.g. ^0 or ^0.0), bumping the right-most zero
 	if strings.HasPrefix(token, "^") {
-		digits, err := parseDigits(token[1:])
+		v, n, err := parseDigits(token[1:])
 		if err != nil {
 			return nil, err
 		}
-		var idx int
-		switch {
-		case digits[0] != 0 || len(digits) < 2:
-			idx = 0
-		case digits[1] != 0 || len(digits) < 3:
-			idx = 1
-		default:
-			idx = 2
+
+		// look for the left-most non-zero to bump
+		// if none found, bump the last supplied
+		idx := n - 1
+		for i := 0; i < n; i++ {
+			if v[i] != 0 {
+				idx = i
+				break
+			}
 		}
+
 		return []comparator{
-			{">=", newVersion(digits)},
-			{"<", newVersion(bump(digits, idx))},
+			{">=", v},
+			{"<", v.bump(idx)},
 		}, nil
 	}
 
 	// exclusive range: 1.2.* is sugar for >=1.2.0.0 <1.3.0.0
 	if m := xRangeRe.FindStringSubmatch(token); m != nil {
-		var digits []int
-		for _, g := range m[1:4] {
+		var low version
+		n := 0
+		for i, g := range m[1:4] {
 			if g != "" {
-				n, _ := strconv.Atoi(g)
-				digits = append(digits, n)
+				low[i], _ = strconv.Atoi(g)
+				n++
 			}
 		}
-		low := newVersion(digits)
-		high := newVersion(bump(digits, len(digits)-1))
+		high := low.bump(n - 1)
 		if low == (version{}) {
 			return []comparator{{"<", high}}, nil
 		}
@@ -166,19 +217,19 @@ func parseConstraint(token string) ([]comparator, error) {
 		case "<>":
 			op = "!="
 		}
-		digits, err := parseDigits(m[2])
+		v, _, err := parseDigits(m[2])
 		if err != nil {
 			return nil, err
 		}
-		return []comparator{{op, newVersion(digits)}}, nil
+		return []comparator{{op, v}}, nil
 	}
 
 	// bare version = exact match, normalized to 4 parts
-	digits, err := parseDigits(token)
+	v, _, err := parseDigits(token)
 	if err != nil {
 		return nil, err
 	}
-	return []comparator{{"==", newVersion(digits)}}, nil
+	return []comparator{{"==", v}}, nil
 }
 
 // parseConstraints processes a given version constraint string
@@ -239,7 +290,7 @@ func getMinimumVersionForGroup(group []comparator) (version, bool) {
 	for retry := true; retry; {
 		retry = false
 		for _, p := range group {
-			if holds(lower, p) {
+			if lower.holds(p) {
 				continue
 			}
 			if p.op != "!=" {
@@ -277,48 +328,4 @@ func getMinimumVersionForConstraint(constraint string) (string, error) {
 	}
 
 	return minimum.String(), nil
-}
-
-// ----- helper functions -----
-
-// parseDigits splits a version string into its given digits.
-func parseDigits(s string) ([]int, error) {
-	m := versionRe.FindStringSubmatch(strings.TrimSpace(s))
-	if m == nil {
-		return nil, fmt.Errorf("cannot parse version %q", s)
-	}
-	var digits []int
-	for _, g := range m[1:] {
-		if g != "" {
-			n, _ := strconv.Atoi(g)
-			digits = append(digits, n)
-		}
-	}
-	return digits, nil
-}
-
-// bump returns digits truncated after index idx, with that digit incremented.
-func bump(digits []int, idx int) []int {
-	out := append([]int(nil), digits[:idx+1]...)
-	out[idx]++
-	return out
-}
-
-func holds(v version, p comparator) bool {
-	c := v.cmp(p.v)
-	switch p.op {
-	case "==":
-		return c == 0
-	case "!=":
-		return c != 0
-	case ">":
-		return c > 0
-	case ">=":
-		return c >= 0
-	case "<":
-		return c < 0
-	case "<=":
-		return c <= 0
-	}
-	return false
 }

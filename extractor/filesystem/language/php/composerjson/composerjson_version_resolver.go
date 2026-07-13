@@ -180,7 +180,7 @@ func parseConstraint(token string) ([]comparator, error) {
 		// look for the left-most non-zero to bump
 		// if none found, bump the last supplied
 		idx := n - 1
-		for i := 0; i < n; i++ {
+		for i := range n {
 			if v.parts[i] != 0 {
 				idx = i
 				break

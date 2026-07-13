@@ -20,11 +20,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
 
 	"github.com/google/osv-scalibr/extractor"
 	"github.com/google/osv-scalibr/extractor/filesystem"
+	"github.com/google/osv-scalibr/extractor/filesystem/internal/units"
 	"github.com/google/osv-scalibr/extractor/filesystem/osv"
 	"github.com/google/osv-scalibr/inventory"
 	"github.com/google/osv-scalibr/log"
@@ -37,6 +39,9 @@ import (
 const (
 	// Name is the unique name of this extractor.
 	Name = "php/composerjson"
+
+	// maxPackageJSONSizeBytes limits the size of a single composer.json file
+	maxPackageJSONSizeBytes int64 = 10 * units.MiB
 )
 
 type composerJSON struct {
@@ -99,7 +104,9 @@ func buildPackage(input *filesystem.ScanInput, name string, constraint string, g
 func (e Extractor) Extract(ctx context.Context, input *filesystem.ScanInput) (inventory.Inventory, error) {
 	var parsedManifest *composerJSON
 
-	err := json.NewDecoder(input.Reader).Decode(&parsedManifest)
+	// Prevent ingestion of large composer.json file
+	limitReader := io.LimitReader(input.Reader, maxPackageJSONSizeBytes)
+	err := json.NewDecoder(limitReader).Decode(&parsedManifest)
 
 	if err != nil {
 		return inventory.Inventory{}, fmt.Errorf("could not extract: %w", err)

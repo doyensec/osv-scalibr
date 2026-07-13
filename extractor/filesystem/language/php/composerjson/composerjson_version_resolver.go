@@ -23,15 +23,17 @@ import (
 
 // ----- type definitions -----
 
-// version is a composer-normalized version: 4 numeric parts.
-type version [4]int
+// version is a composer-normalized version with 4 numeric parts.
+type version struct {
+	parts [4]int
+}
 
 var versionRe = regexp.MustCompile(`(?i)^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:\.(\d+))?$`)
 
 func (v version) cmp(o version) int {
-	for i := range v {
-		if v[i] != o[i] {
-			if v[i] < o[i] {
+	for i := range v.parts {
+		if v.parts[i] != o.parts[i] {
+			if v.parts[i] < o.parts[i] {
 				return -1
 			}
 			return 1
@@ -42,9 +44,9 @@ func (v version) cmp(o version) int {
 
 // bump returns v with the digit at index idx incremented and all later digits zeroed.
 func (v version) bump(idx int) version {
-	v[idx]++
-	for i := idx + 1; i < len(v); i++ {
-		v[i] = 0
+	v.parts[idx]++
+	for i := idx + 1; i < len(v.parts); i++ {
+		v.parts[i] = 0
 	}
 	return v
 }
@@ -70,14 +72,14 @@ func (v version) holds(p comparator) bool {
 
 // next returns the successor in the discrete 4-part version space.
 func (v version) next() version {
-	v[3]++
+	v.parts[3]++
 	return v
 }
 
 func (v version) String() string {
-	parts := []string{strconv.Itoa(v[0]), strconv.Itoa(v[1]), strconv.Itoa(v[2])}
-	if v[3] != 0 {
-		parts = append(parts, strconv.Itoa(v[3]))
+	parts := []string{strconv.Itoa(v.parts[0]), strconv.Itoa(v.parts[1]), strconv.Itoa(v.parts[2])}
+	if v.parts[3] != 0 {
+		parts = append(parts, strconv.Itoa(v.parts[3]))
 	}
 	return strings.Join(parts, ".")
 }
@@ -101,7 +103,7 @@ func parseDigits(s string) (version, int, error) {
 	n := 0
 	for i, g := range m[1:] {
 		if g != "" {
-			v[i], _ = strconv.Atoi(g)
+			v.parts[i], _ = strconv.Atoi(g)
 			n++
 		}
 	}
@@ -179,7 +181,7 @@ func parseConstraint(token string) ([]comparator, error) {
 		// if none found, bump the last supplied
 		idx := n - 1
 		for i := 0; i < n; i++ {
-			if v[i] != 0 {
+			if v.parts[i] != 0 {
 				idx = i
 				break
 			}
@@ -197,7 +199,7 @@ func parseConstraint(token string) ([]comparator, error) {
 		n := 0
 		for i, g := range m[1:4] {
 			if g != "" {
-				low[i], _ = strconv.Atoi(g)
+				low.parts[i], _ = strconv.Atoi(g)
 				n++
 			}
 		}

@@ -532,6 +532,70 @@ func TestUnpackSquashedFromTarball(t *testing.T) {
 	}
 }
 
+func TestUnpackSquashedFromTarballDoesNotCreateDirectoriesThroughSymlink(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("creating symlinks requires additional privileges on Windows")
+	}
+
+	tests := []struct {
+		name    string
+		header  *tar.Header
+		data    io.Reader
+		wantErr bool
+	}{
+		{
+			name: "regular_file",
+			header: &tar.Header{
+				Name: "pivot/created/file.txt",
+				Mode: 0644,
+				Size: int64(len("escaped")),
+			},
+			data:    bytes.NewBufferString("escaped"),
+			wantErr: true,
+		},
+		{
+			name: "symlink",
+			header: &tar.Header{
+				Name:     "pivot/created/link.txt",
+				Typeflag: tar.TypeSymlink,
+				Linkname: "target.txt",
+				Mode:     0777,
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			baseDir := t.TempDir()
+			unpackDir := filepath.Join(baseDir, "unpack")
+			if err := os.Mkdir(unpackDir, 0755); err != nil {
+				t.Fatalf("os.Mkdir(%q): %v", unpackDir, err)
+			}
+			outsideDir := filepath.Join(baseDir, "outside")
+			if err := os.Mkdir(outsideDir, 0755); err != nil {
+				t.Fatalf("os.Mkdir(%q): %v", outsideDir, err)
+			}
+			if err := os.Symlink(outsideDir, filepath.Join(unpackDir, "pivot")); err != nil {
+				t.Fatalf("os.Symlink(%q, %q): %v", outsideDir, filepath.Join(unpackDir, "pivot"), err)
+			}
+
+			tarPath := filepath.Join(baseDir, "image.tar")
+			if err := createTarball(t, tarPath, []tarEntry{{Header: tc.header, Data: tc.data}}); err != nil {
+				t.Fatalf("createTarball(%q): %v", tarPath, err)
+			}
+
+			u := mustNewUnpacker(t, unpack.DefaultUnpackerConfig())
+			err := u.UnpackSquashedFromTarball(unpackDir, tarPath)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("UnpackSquashedFromTarball(%q, %q) error: got %v, want error %v", unpackDir, tarPath, err, tc.wantErr)
+			}
+			if _, err := os.Lstat(filepath.Join(outsideDir, "created")); !errors.Is(err, fs.ErrNotExist) {
+				t.Errorf("directory outside unpack root exists or could not be checked: %v", err)
+			}
+		})
+	}
+}
+
 // mustNewUnpacker creates a new unpacker with the given config.
 func mustNewUnpacker(t *testing.T, cfg *unpack.UnpackerConfig) *unpack.Unpacker {
 	t.Helper()

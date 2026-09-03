@@ -318,8 +318,8 @@ func unpack(dir string, reader io.Reader, symlinkResolution SymlinkResolution, s
 
 			content := buf.Bytes()
 
-			parent := filepath.Dir(fullPath)
-			if err := os.MkdirAll(parent, fs.ModePerm); err != nil {
+			parent := filepath.Dir(cleanPath)
+			if err := root.MkdirAll(parent, fs.ModePerm); err != nil {
 				log.Errorf("failed to create directory %q for file %q: %v", parent, fullPath, err)
 				return nil, fmt.Errorf("failed to create directory %q for file %q: %w", parent, fullPath, err)
 			}
@@ -346,12 +346,13 @@ func unpack(dir string, reader io.Reader, symlinkResolution SymlinkResolution, s
 			// TODO(b/406760694): Remove this once the bug is fixed.
 
 		case tar.TypeLink, tar.TypeSymlink:
-			parent := filepath.Dir(fullPath)
-			if err := os.MkdirAll(parent, fs.ModePerm); err != nil {
+			parent := filepath.Dir(cleanPath)
+			if err := root.MkdirAll(parent, fs.ModePerm); err != nil {
 				log.Errorf("failed to create directory %q: %v", parent, err)
 				if symlinkErrStrategy == SymlinkErrReturn {
 					return nil, fmt.Errorf("failed to create directory %q: %w", parent, err)
 				}
+				continue
 			}
 
 			target := header.Linkname

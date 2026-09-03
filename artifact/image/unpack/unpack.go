@@ -374,8 +374,7 @@ func unpack(dir string, reader io.Reader, symlinkResolution SymlinkResolution, s
 			}
 
 			if symlinkResolution == SymlinkRetain {
-				// TODO(b/412444199): Use the os.Root API to create symlinks when root.Symlink is available.
-				if err := os.Symlink(targetPath, fullPath); err != nil {
+				if err := root.Symlink(targetPath, cleanPath); err != nil {
 					log.Errorf("failed to symlink %q to %q: %v", fullPath, targetPath, err)
 					if symlinkErrStrategy == SymlinkErrReturn {
 						return nil, fmt.Errorf("failed to symlink %q to %q: %w", fullPath, targetPath, err)

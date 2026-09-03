@@ -596,6 +596,45 @@ func TestUnpackSquashedFromTarballDoesNotCreateDirectoriesThroughSymlink(t *test
 	}
 }
 
+func TestUnpackSquashedFromTarballDoesNotOverwriteExistingFile(t *testing.T) {
+	baseDir := t.TempDir()
+	unpackDir := filepath.Join(baseDir, "unpack")
+	if err := os.Mkdir(unpackDir, 0755); err != nil {
+		t.Fatalf("os.Mkdir(%q): %v", unpackDir, err)
+	}
+
+	filePath := filepath.Join(unpackDir, "existing.txt")
+	if err := os.WriteFile(filePath, []byte("existing"), 0644); err != nil {
+		t.Fatalf("os.WriteFile(%q): %v", filePath, err)
+	}
+
+	tarPath := filepath.Join(baseDir, "image.tar")
+	content := "replacement"
+	if err := createTarball(t, tarPath, []tarEntry{{
+		Header: &tar.Header{
+			Name: "existing.txt",
+			Mode: 0644,
+			Size: int64(len(content)),
+		},
+		Data: bytes.NewBufferString(content),
+	}}); err != nil {
+		t.Fatalf("createTarball(%q): %v", tarPath, err)
+	}
+
+	u := mustNewUnpacker(t, unpack.DefaultUnpackerConfig())
+	if err := u.UnpackSquashedFromTarball(unpackDir, tarPath); err != nil {
+		t.Fatalf("UnpackSquashedFromTarball(%q, %q): %v", unpackDir, tarPath, err)
+	}
+
+	got, err := os.ReadFile(filePath)
+	if err != nil {
+		t.Fatalf("os.ReadFile(%q): %v", filePath, err)
+	}
+	if diff := cmp.Diff("existing", string(got)); diff != "" {
+		t.Errorf("existing file content differs (-want +got):\n%s", diff)
+	}
+}
+
 // mustNewUnpacker creates a new unpacker with the given config.
 func mustNewUnpacker(t *testing.T, cfg *unpack.UnpackerConfig) *unpack.Unpacker {
 	t.Helper()

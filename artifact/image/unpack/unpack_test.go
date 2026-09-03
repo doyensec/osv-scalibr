@@ -16,6 +16,7 @@ package unpack_test
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -321,8 +322,44 @@ func TestUnpackSquashedFromTarball(t *testing.T) {
 		dir        string
 		tarEntries []tarEntry
 		want       map[string]contentAndMode
+		wantAbsent []string
 		wantErr    error
 	}{
+		{
+			name: "paths_outside_the_unpack_root_are_skipped",
+			cfg:  unpack.DefaultUnpackerConfig(),
+			dir:  t.TempDir(),
+			tarEntries: []tarEntry{
+				{
+					Header: &tar.Header{
+						Name: "../escape/file.txt",
+						Mode: 0644,
+						Size: int64(len("escaped")),
+					},
+					Data: bytes.NewBufferString("escaped"),
+				},
+				{
+					Header: &tar.Header{
+						Name:     "../escape/link.txt",
+						Typeflag: tar.TypeSymlink,
+						Linkname: "../../target.txt",
+						Mode:     0777,
+					},
+				},
+				{
+					Header: &tar.Header{
+						Name: "safe.txt",
+						Mode: 0644,
+						Size: int64(len("safe")),
+					},
+					Data: bytes.NewBufferString("safe"),
+				},
+			},
+			want: map[string]contentAndMode{
+				filepath.FromSlash("unpack/safe.txt"): {content: "safe", mode: fs.FileMode(0644)},
+			},
+			wantAbsent: []string{"escape"},
+		},
 		{
 			name: "os.Root_fails_when_writing_files_outside_base_directory_due_to_long_symlink_target",
 			cfg: unpack.DefaultUnpackerConfig().WithRequirer(require.NewFileRequirerPaths([]string{
@@ -477,6 +514,11 @@ func TestUnpackSquashedFromTarball(t *testing.T) {
 			got := mustReadDir(t, tc.dir)
 			if diff := cmp.Diff(tc.want, got, cmp.AllowUnexported(contentAndMode{})); diff != "" {
 				t.Fatalf("Unpacker{%+v}.UnpackSquashed(%q, %q) returned unexpected diff (-want +got):\n%s", tc.cfg, unpackDir, tarPath, diff)
+			}
+			for _, path := range tc.wantAbsent {
+				if _, err := os.Lstat(filepath.Join(tc.dir, path)); !errors.Is(err, fs.ErrNotExist) {
+					t.Errorf("path %q exists or could not be checked: %v", path, err)
+				}
 			}
 
 			tmpFilesGot := filesInTmp(t, os.TempDir())

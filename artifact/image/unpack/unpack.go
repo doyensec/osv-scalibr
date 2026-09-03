@@ -275,6 +275,10 @@ func unpack(dir string, reader io.Reader, symlinkResolution SymlinkResolution, s
 		}
 
 		cleanPath := path.Clean(header.Name)
+		if !filepath.IsLocal(filepath.FromSlash(cleanPath)) {
+			log.Warnf("skipping file with path outside the unpack root: %q", header.Name)
+			continue
+		}
 		fullPath := path.Join(dir, cleanPath)
 
 		// Skip files already unpacked.

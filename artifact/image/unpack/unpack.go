@@ -283,7 +283,7 @@ func unpack(dir string, reader io.Reader, symlinkResolution SymlinkResolution, s
 
 		// Skip files already unpacked.
 		// Lstat is used instead of Stat to avoid following symlinks, because their targets may not exist yet.
-		if _, err = root.Lstat(fullPath); err == nil {
+		if _, err = root.Lstat(cleanPath); err == nil {
 			continue
 		}
 

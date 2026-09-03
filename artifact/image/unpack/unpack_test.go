@@ -332,7 +332,7 @@ func TestUnpackSquashedFromTarball(t *testing.T) {
 			tarEntries: []tarEntry{
 				{
 					Header: &tar.Header{
-						Name: "../escape/file.txt",
+						Name: "../file-escape/file.txt",
 						Mode: 0644,
 						Size: int64(len("escaped")),
 					},
@@ -340,9 +340,9 @@ func TestUnpackSquashedFromTarball(t *testing.T) {
 				},
 				{
 					Header: &tar.Header{
-						Name:     "../escape/link.txt",
+						Name:     "../symlink-escape/link.txt",
 						Typeflag: tar.TypeSymlink,
-						Linkname: "../../target.txt",
+						Linkname: "/target.txt",
 						Mode:     0777,
 					},
 				},
@@ -358,7 +358,7 @@ func TestUnpackSquashedFromTarball(t *testing.T) {
 			want: map[string]contentAndMode{
 				filepath.FromSlash("unpack/safe.txt"): {content: "safe", mode: fs.FileMode(0644)},
 			},
-			wantAbsent: []string{"escape"},
+			wantAbsent: []string{"file-escape", "symlink-escape"},
 		},
 		{
 			name: "os.Root_fails_when_writing_files_outside_base_directory_due_to_long_symlink_target",

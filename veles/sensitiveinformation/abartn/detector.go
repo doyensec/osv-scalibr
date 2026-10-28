@@ -87,12 +87,16 @@ func NewDetector() veles.Detector {
 
 			likelihood := sensitiveinformation.LikelihoodUnlikely
 
-			if validChecksum(b) {
+			if contextMatch {
 				likelihood = sensitiveinformation.LikelihoodLikely
 			}
 
-			if contextMatch {
-				likelihood = sensitiveinformation.LikelihoodVeryLikely
+			if validChecksum(b) {
+				if likelihood == sensitiveinformation.LikelihoodUnlikely {
+					likelihood = sensitiveinformation.LikelihoodLikely
+				} else {
+					likelihood = sensitiveinformation.LikelihoodVeryLikely
+				}
 			}
 
 			finding := sensitiveinformation.SensitiveInformation{

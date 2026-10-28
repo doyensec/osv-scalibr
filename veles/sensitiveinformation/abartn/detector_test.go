@@ -198,6 +198,16 @@ func TestDetector_Likely(t *testing.T) {
 				buildExpectedResult([]byte("121000248"), sensitiveinformation.LikelihoodLikely),
 			},
 		},
+		{
+			name:  "keyword_invalid_checksum",
+			input: `ABA: 021000022`,
+			want:  []veles.Secret{buildExpectedResult([]byte("021000022"), sensitiveinformation.LikelihoodLikely)},
+		},
+		{
+			name:  "keyword_invalid_checksum_with_dashes",
+			input: `ABA: 0210-0002-2`,
+			want:  []veles.Secret{buildExpectedResult([]byte("0210-0002-2"), sensitiveinformation.LikelihoodLikely)},
+		},
 	}
 
 	for _, tc := range cases {
@@ -483,16 +493,6 @@ func TestDetector_VeryLikely(t *testing.T) {
 			name:  "keyword_with_dashes",
 			input: `ABA: 0210-0002-1`,
 			want:  []veles.Secret{buildExpectedResult([]byte("0210-0002-1"), sensitiveinformation.LikelihoodVeryLikely)},
-		},
-		{
-			name:  "keyword_invalid_checksum",
-			input: `ABA: 021000022`,
-			want:  []veles.Secret{buildExpectedResult([]byte("021000022"), sensitiveinformation.LikelihoodVeryLikely)},
-		},
-		{
-			name:  "keyword_invalid_checksum_with_dashes",
-			input: `ABA: 0210-0002-2`,
-			want:  []veles.Secret{buildExpectedResult([]byte("0210-0002-2"), sensitiveinformation.LikelihoodVeryLikely)},
 		},
 	}
 

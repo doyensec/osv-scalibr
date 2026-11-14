@@ -370,6 +370,12 @@ message DockerComposeImageConfig {
   // If set, this overrides the global max_file_size_bytes configuration
   // for this specific plugin.
   int64 max_file_size_bytes = 1;
+
+  // Resolve external Compose include and extends references. Disabled by default.
+  // Enable only for trusted manifests: compose-go reads files accessible to the
+  // scanner process, without confinement to the scan root. Requires an on-disk
+  // scan root. Service env_file and label_file resolution remains disabled.
+  bool resolve_external_refs = 2;
 }
 
 message K8sImageConfig {

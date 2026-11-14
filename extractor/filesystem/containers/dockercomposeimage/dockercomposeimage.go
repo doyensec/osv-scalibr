@@ -56,8 +56,9 @@ const (
 
 // Extractor extracts image URLs from Docker Compose files.
 type Extractor struct {
-	Stats            stats.Collector
-	maxFileSizeBytes int64
+	Stats               stats.Collector
+	maxFileSizeBytes    int64
+	resolveExternalRefs bool
 }
 
 // New returns a Docker Compose image extractor.
@@ -77,7 +78,10 @@ func New(cfg *cpb.PluginConfig) (filesystem.Extractor, error) {
 		maxFileSize = specific.GetMaxFileSizeBytes()
 	}
 
-	return &Extractor{maxFileSizeBytes: maxFileSize}, nil
+	return &Extractor{
+		maxFileSizeBytes:    maxFileSize,
+		resolveExternalRefs: specific.GetResolveExternalRefs(),
+	}, nil
 }
 
 // Name of the extractor.
@@ -122,18 +126,21 @@ func (e Extractor) Extract(ctx context.Context, input *filesystem.ScanInput) (in
 		return inventory.Inventory{}, err
 	}
 
-	// Check for a top-level "services" field.
+	// Check for a top-level "services" field, or an opted-in "include".
 	var content map[string]any
 	if err := yaml.Unmarshal(data, &content); err != nil {
 		// Not a valid yaml file, not an error.
 		return inventory.Inventory{}, err
 	}
 	if _, ok := content["services"]; !ok {
-		// Not a compose file, not an error.
-		return inventory.Inventory{}, nil
+		// Additional check for include-only files when external references are not allowed
+		if _, included := content["include"]; !e.resolveExternalRefs || !included {
+			// Not a compose file, not an error.
+			return inventory.Inventory{}, nil
+		}
 	}
 
-	images, err := uniqueImagesFromReader(ctx, input, data)
+	images, err := e.uniqueImagesFromReader(ctx, input, data)
 	if err != nil {
 		log.Warnf("Parsing docker-compose file %q failed: %v", input.Path, err)
 		return inventory.Inventory{}, nil
@@ -154,7 +161,7 @@ func (e Extractor) Extract(ctx context.Context, input *filesystem.ScanInput) (in
 
 // uniqueImagesFromReader extracts unique image names from a Docker Compose file.
 // It handles environment variable interpolation and returns a sorted list of unique images.
-func uniqueImagesFromReader(ctx context.Context, input *filesystem.ScanInput, data []byte) ([]string, error) {
+func (e Extractor) uniqueImagesFromReader(ctx context.Context, input *filesystem.ScanInput, data []byte) ([]string, error) {
 	// Load environment variables from a sibling .env file if it exists
 	workingDir := filepath.Dir(input.Path)
 	envPath := filepath.ToSlash(filepath.Join(workingDir, ".env"))
@@ -171,9 +178,19 @@ func uniqueImagesFromReader(ctx context.Context, input *filesystem.ScanInput, da
 			log.Warnf("input.FS.Open(%q): %v", envPath, err)
 		}
 	}
+	filename := input.Path
+	if e.resolveExternalRefs {
+		if input.Root == "" {
+			return nil, errors.New("resolve_external_refs requires an on-disk scan root")
+		}
+		// Opt-in resolution deliberately allows compose-go to read host files.
+		// Resolve relative references beside the manifest, not beside the scanner.
+		filename = filepath.Join(input.Root, input.Path)
+		workingDir = filepath.Dir(filename)
+	}
 	configFiles := []types.ConfigFile{
 		{
-			Filename: input.Path,
+			Filename: filename,
 			Content:  data,
 		},
 	}
@@ -188,9 +205,10 @@ func uniqueImagesFromReader(ctx context.Context, input *filesystem.ScanInput, da
 			LookupValue:     details.LookupEnv,
 			TypeCastMapping: make(map[tree.Path]interpolation.Cast),
 		},
-		ResolvePaths:           false,
-		SkipInclude:            true,
-		SkipExtends:            true,
+		ResolvePaths: e.resolveExternalRefs,
+		SkipInclude:  !e.resolveExternalRefs,
+		SkipExtends:  !e.resolveExternalRefs,
+		// Service environment and labels are not needed to extract image names.
 		SkipResolveEnvironment: true,
 		SkipResolveLabels:      true,
 	}
